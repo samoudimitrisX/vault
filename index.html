@@ -1,0 +1,2229 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#0b1020" />
+<title>Vault</title>
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%236366f1'/><path fill='%23fff' d='M32 12l16 6v12c0 12-7 20-16 22-9-2-16-10-16-22V18z'/></svg>" />
+<link rel="manifest" href='data:application/manifest+json;utf8,{"name":"Vault","short_name":"Vault","start_url":".","display":"standalone","background_color":"%230b1020","theme_color":"%230b1020","icons":[{"src":"data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%236366f1%22/><path fill=%22%23fff%22 d=%22M32 12l16 6v12c0 12-7 20-16 22-9-2-16-10-16-22V18z%22/></svg>","sizes":"any","type":"image/svg+xml"}]}' />
+<style>
+:root{
+  --bg:#0b1020; --panel:#131a34; --panel2:#1a2246; --line:#242c55;
+  --text:#e7ecff; --muted:#98a2c7; --brand:#6366f1; --brand2:#8b5cf6;
+  --ok:#10b981; --warn:#f59e0b; --err:#ef4444;
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,sans-serif;font-size:15px;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea,select{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--brand)}
+textarea{min-height:120px;resize:vertical;font-family:inherit}
+select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='%2398a2c7' d='M6 8L2 4h8z'/></svg>");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+a{color:var(--brand)}
+.app{max-width:900px;margin:0 auto;padding:14px;padding-top:env(safe-area-inset-top);padding-bottom:calc(env(safe-area-inset-bottom) + 80px)}
+.hidden{display:none!important}
+
+/* Login */
+.login{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}
+.login-card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.logo{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.logo-svg{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand2));display:grid;place-items:center;color:#fff;font-weight:700}
+.logo h1{margin:0;font-size:20px}
+.hint{color:var(--muted);font-size:13px;margin:6px 0 14px}
+.row{display:flex;gap:8px;align-items:center}
+.btn{background:var(--brand);color:#fff;padding:11px 14px;border-radius:10px;font-weight:600;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line);font-weight:500}
+.btn.danger{background:var(--err)}
+.btn.wide{width:100%}
+.btn.sm{padding:6px 10px;font-size:13px}
+.error{color:var(--err);font-size:13px;margin-top:8px;min-height:1em}
+
+/* Top bar */
+.topbar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.topbar .logo{margin:0;flex:1}
+.icon-btn{width:38px;height:38px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);display:grid;place-items:center}
+.icon-btn:hover{border-color:var(--brand)}
+
+/* Tabs */
+.tabs{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:12px}
+.tabs button{flex:1;padding:10px;border-radius:9px;color:var(--muted);font-weight:600}
+.tabs button.active{background:var(--panel2);color:var(--text)}
+
+/* Filter chips */
+.filters{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.filter-chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0}
+.filter-chip .val{color:var(--text);font-weight:500}
+.filter-chip.active{border-color:var(--brand);background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.15));color:var(--text)}
+.filter-chip .clear{margin-left:2px;color:var(--muted);font-size:16px;line-height:1}
+.filter-chip .clear:hover{color:var(--err)}
+
+/* People strip (eshop-style cards) */
+.people-strip{display:flex;gap:8px;overflow-x:auto;padding:6px 2px 12px;margin-bottom:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.people-strip::-webkit-scrollbar{display:none}
+.person-card{flex-shrink:0;width:82px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 4px 8px;text-align:center;cursor:pointer;transition:transform .1s,border-color .15s;position:relative}
+.person-card:hover{border-color:var(--brand)}
+.person-card:active{transform:scale(.96)}
+.person-card.active{border-color:var(--brand);background:linear-gradient(135deg,rgba(99,102,241,.18),rgba(139,92,246,.18))}
+.person-avatar{width:48px;height:48px;border-radius:50%;color:#fff;display:grid;place-items:center;font-weight:700;font-size:17px;margin:0 auto 6px;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.person-avatar.all{background:linear-gradient(135deg,#6366f1,#8b5cf6);font-size:20px}
+.person-avatar.add{background:var(--panel2);border:2px dashed var(--line);color:var(--muted);font-weight:400}
+.person-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
+.person-count{color:var(--muted);font-size:10px;margin-top:1px}
+.person-card.add .person-name{color:var(--muted)}
+
+/* Long-press feedback */
+.person-card.pressing{background:var(--panel2)}
+
+.strip-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:2px 4px 0}
+
+/* Backup banner */
+.backup-banner{background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(239,68,68,.1));border:1px solid rgba(245,158,11,.4);border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.backup-banner .grow{flex:1;min-width:180px}
+.backup-banner .title{font-weight:600;margin-bottom:2px}
+.backup-banner .desc{color:var(--muted);font-size:12px}
+.backup-banner .actions{display:flex;gap:6px}
+
+/* Search */
+.search{position:relative;margin-bottom:12px}
+.search input{padding-left:36px}
+.search svg{position:absolute;left:11px;top:11px;color:var(--muted)}
+
+/* List */
+.list{display:flex;flex-direction:column;gap:8px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;transition:border-color .15s}
+.card:hover{border-color:var(--brand)}
+.card h3{margin:0 0 4px;font-size:15px;display:flex;align-items:center;gap:8px}
+.card .sub{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .tags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.tag{display:inline-flex;align-items:center;gap:3px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:11px;color:var(--muted)}
+.tag.person{background:rgba(139,92,246,.15);border-color:rgba(139,92,246,.3);color:#c4b5fd}
+.tag.cat{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.3);color:#a5b4fc}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+
+/* FAB */
+.fab{position:fixed;right:20px;bottom:calc(env(safe-area-inset-bottom) + 20px);width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font-size:26px;display:grid;place-items:center;box-shadow:0 10px 30px rgba(99,102,241,.5);z-index:5}
+
+/* Modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:10;padding:0}
+.modal.open{display:flex}
+.sheet{background:var(--panel);width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:18px;padding-bottom:calc(env(safe-area-inset-bottom) + 18px);max-height:92dvh;overflow:auto}
+@media (min-width:640px){
+  .modal{align-items:center;padding:16px}
+  .sheet{border-radius:16px;max-height:88dvh}
+}
+.sheet h2{margin:0 0 10px;font-size:18px}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.pw-field{position:relative}
+.pw-field input{padding-right:80px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.pw-field .pw-actions{position:absolute;right:6px;top:6px;display:flex;gap:2px}
+.pw-field .pw-actions button{width:32px;height:32px;border-radius:8px;color:var(--muted)}
+.pw-field .pw-actions button:hover{background:var(--panel);color:var(--text)}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.actions .spacer{flex:1}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:480px){.two-col{grid-template-columns:1fr}}
+
+/* Settings panel */
+.settings{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.settings h3{margin:0 0 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.settings .item{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.settings .item:first-of-type{border-top:0}
+.settings .item .grow{flex:1;min-width:0}
+.settings .item .desc{color:var(--muted);font-size:12px}
+
+/* Manager lists (people/categories editor) */
+.mgr-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.mgr-pill{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.mgr-pill button{color:var(--muted);font-size:16px;line-height:1;padding:0 2px}
+.mgr-pill button:hover{color:var(--err)}
+
+/* Password strength */
+.strength{height:4px;border-radius:2px;background:var(--panel2);overflow:hidden;margin-top:6px}
+.strength>div{height:100%;transition:width .2s,background .2s}
+
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 90px);transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 14px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.4);z-index:20;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+
+pre.note{white-space:pre-wrap;word-wrap:break-word;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;margin:0}
+
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* Picker modal (for filters + form dropdowns) */
+.picker-list{display:flex;flex-direction:column;gap:4px;max-height:60dvh;overflow:auto;margin-top:8px}
+.picker-item{display:flex;align-items:center;gap:8px;padding:12px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.picker-item:hover{border-color:var(--brand)}
+.picker-item.selected{border-color:var(--brand);background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(139,92,246,.2))}
+.picker-item .count{margin-left:auto;color:var(--muted);font-size:12px}
+.picker-item.add{color:var(--brand);font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- LOGIN VIEW -->
+<div id="loginView" class="login">
+  <div class="login-card">
+    <div class="logo">
+      <div class="logo-svg">V</div>
+      <h1>Vault</h1>
+    </div>
+    <div id="loginHint" class="hint">Δώσε master password για να ξεκλειδώσεις.</div>
+
+    <div id="unlockBox">
+      <div class="field pw-field">
+        <input id="masterInput" type="password" placeholder="Master password" autocomplete="current-password" />
+        <div class="pw-actions">
+          <button id="toggleMaster" title="Δείξε/κρύψε" aria-label="toggle">👁</button>
+        </div>
+      </div>
+      <button id="unlockBtn" class="btn wide">Ξεκλείδωμα</button>
+      <button id="webauthnBtn" class="btn ghost wide hidden" style="margin-top:8px">🔑 Ξεκλείδωμα με fingerprint</button>
+      <div id="loginError" class="error"></div>
+    </div>
+
+    <div id="setupBox" class="hidden">
+      <div class="field pw-field">
+        <input id="newMaster" type="password" placeholder="Νέος master password" autocomplete="new-password" />
+        <div class="pw-actions">
+          <button id="toggleNew" title="Δείξε/κρύψε" aria-label="toggle">👁</button>
+        </div>
+      </div>
+      <div class="strength"><div id="strengthBar" style="width:0%;background:var(--err)"></div></div>
+      <div class="field pw-field" style="margin-top:10px">
+        <input id="newMaster2" type="password" placeholder="Επιβεβαίωση" autocomplete="new-password" />
+      </div>
+      <button id="createBtn" class="btn wide">Δημιουργία</button>
+      <div id="setupError" class="error"></div>
+      <div class="hint" style="margin-top:12px">⚠ Αν χάσεις τον master password τα δεδομένα δεν ανακτώνται. Κράτα και ένα backup export.</div>
+    </div>
+
+    <div style="text-align:center;margin-top:14px">
+      <button id="importFromFileBtn" class="btn ghost" style="font-size:13px">Επαναφορά από backup...</button>
+      <input id="importFileInput" type="file" accept=".json,application/json" class="hidden" />
+    </div>
+  </div>
+</div>
+
+<!-- APP VIEW -->
+<div id="appView" class="app hidden">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-svg">V</div>
+      <h1 style="font-size:18px">Vault</h1>
+    </div>
+    <button id="settingsBtn" class="icon-btn" title="Ρυθμίσεις" aria-label="settings">⚙</button>
+    <button id="lockBtn" class="icon-btn" title="Κλείδωμα" aria-label="lock">🔒</button>
+  </div>
+
+  <div id="backupBanner" class="backup-banner hidden">
+    <div>💾</div>
+    <div class="grow">
+      <div class="title">Ώρα για backup</div>
+      <div class="desc" id="backupBannerDesc">Auto-backup Τετάρτης & Σαββάτου.</div>
+    </div>
+    <div class="actions">
+      <button id="backupNowBtn" class="btn sm">Κάνε τώρα</button>
+      <button id="backupSkipBtn" class="btn ghost sm">Αργότερα</button>
+    </div>
+  </div>
+
+  <div id="settingsPanel" class="settings hidden">
+    <h3>Πρόσωπα</h3>
+    <div class="row" style="margin-bottom:6px">
+      <input id="newPersonInput" placeholder="Προσθήκη προσώπου..." />
+      <button id="addPersonBtn" class="btn sm">Add</button>
+    </div>
+    <div id="peopleMgr" class="mgr-list"></div>
+
+    <h3 style="margin-top:16px">Κατηγορίες</h3>
+    <div class="row" style="margin-bottom:6px">
+      <input id="newCategoryInput" placeholder="Προσθήκη κατηγορίας..." />
+      <button id="addCategoryBtn" class="btn sm">Add</button>
+    </div>
+    <div id="categoriesMgr" class="mgr-list"></div>
+    <div class="hint" style="margin-top:8px">Οι υποκατηγορίες φτιάχνονται μέσα από τη φόρμα κάθε εγγραφής.</div>
+
+    <h3 style="margin-top:16px">Ασφάλεια & Backup</h3>
+    <div class="item">
+      <div class="grow">
+        <div>Fingerprint / passkey</div>
+        <div class="desc">Γρήγορο ξεκλείδωμα σε αυτή τη συσκευή.</div>
+      </div>
+      <button id="enrollWebauthnBtn" class="btn ghost">Ενεργοποίηση</button>
+      <button id="disableWebauthnBtn" class="btn ghost hidden">Απενεργοποίηση</button>
+    </div>
+    <div class="item">
+      <div class="grow">
+        <div>Auto-lock</div>
+        <div class="desc">Κλείδωμα μετά από αδράνεια.</div>
+      </div>
+      <select id="autolockSel" style="width:auto;min-width:120px">
+        <option value="60000">1 λεπτό</option>
+        <option value="300000" selected>5 λεπτά</option>
+        <option value="900000">15 λεπτά</option>
+        <option value="3600000">1 ώρα</option>
+        <option value="0">Ποτέ</option>
+      </select>
+    </div>
+    <div class="item">
+      <div class="grow">
+        <div>Auto-backup ημέρες</div>
+        <div class="desc">Υπενθύμιση όταν ανοίγεις το app εκείνες τις μέρες.</div>
+      </div>
+      <select id="autobackupSel" style="width:auto;min-width:170px">
+        <option value="wed-sat">Τετάρτη & Σάββατο</option>
+        <option value="daily">Καθημερινά</option>
+        <option value="weekly">Μια φορά την εβδομάδα</option>
+        <option value="off">Απενεργοποιημένο</option>
+      </select>
+    </div>
+
+    <h3 style="margin-top:16px">☁ Dropbox auto-backup</h3>
+    <div id="dropboxStatus" class="hint" style="margin:0 0 8px">Δεν είναι συνδεδεμένο.</div>
+    <div id="dropboxDisconnected">
+      <div class="field">
+        <label>Dropbox App key</label>
+        <input id="dropboxKeyInput" placeholder="π.χ. ab12cd34ef56gh7" autocomplete="off" />
+      </div>
+      <div class="row">
+        <button id="dropboxConnectBtn" class="btn" style="flex:1">Σύνδεση με Dropbox</button>
+      </div>
+      <div class="hint" style="margin-top:8px">
+        Χρειάζεσαι δωρεάν Dropbox app key.
+        <a href="https://www.dropbox.com/developers/apps" target="_blank" rel="noopener">Άνοιγμα Dropbox App Console →</a>
+      </div>
+      <div class="hint" style="margin-top:4px">
+        Redirect URI που πρέπει να καταχωρήσεις:
+        <code id="dropboxRedirectHint" class="mono" style="user-select:all;word-break:break-all"></code>
+      </div>
+    </div>
+    <div id="dropboxConnected" class="hidden">
+      <div class="item">
+        <div class="grow">
+          <div>Test upload τώρα</div>
+          <div class="desc" id="dropboxLastUpload">Δεν έχει γίνει ακόμα upload.</div>
+        </div>
+        <button id="dropboxTestBtn" class="btn ghost">Upload</button>
+      </div>
+      <div class="item">
+        <div class="grow">
+          <div>Αποσύνδεση</div>
+          <div class="desc">Σβήνει τα Dropbox tokens από το vault.</div>
+        </div>
+        <button id="dropboxDisconnectBtn" class="btn ghost">Αποσύνδεση</button>
+      </div>
+    </div>
+    <div class="item">
+      <div class="grow">
+        <div>Export backup</div>
+        <div class="desc" id="lastBackupDesc">Κρυπτογραφημένο αρχείο με όλα τα δεδομένα.</div>
+      </div>
+      <button id="exportBtn" class="btn ghost">Export</button>
+    </div>
+    <div class="item">
+      <div class="grow">
+        <div>Import</div>
+        <div class="desc">Merge από προηγούμενο backup.</div>
+      </div>
+      <button id="importBtn" class="btn ghost">Import</button>
+    </div>
+    <div class="item">
+      <div class="grow">
+        <div>Αλλαγή master password</div>
+      </div>
+      <button id="changePwBtn" class="btn ghost">Αλλαγή</button>
+    </div>
+    <div class="item">
+      <div class="grow">
+        <div style="color:var(--err)">Διαγραφή όλων</div>
+        <div class="desc">Σβήνει τα δεδομένα από αυτή τη συσκευή.</div>
+      </div>
+      <button id="wipeBtn" class="btn danger">Διαγραφή</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button id="tabPasswords" class="active" data-tab="passwords">🔐 Κωδικοί</button>
+    <button id="tabNotes" data-tab="notes">📝 Σημειώσεις</button>
+  </div>
+
+  <div class="strip-label">👤 Άτομα</div>
+  <div id="peopleStrip" class="people-strip"></div>
+
+  <div class="strip-label">📁 Κατηγορίες</div>
+  <div id="categoryStrip" class="people-strip"></div>
+
+  <div id="subcategoryLabel" class="strip-label hidden">🏷 Υποκατηγορίες</div>
+  <div id="subcategoryStrip" class="people-strip hidden"></div>
+
+  <div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input id="searchInput" type="search" placeholder="Αναζήτηση..." />
+  </div>
+
+  <div id="listContainer" class="list"></div>
+</div>
+
+<!-- ITEM EDIT MODAL -->
+<div id="editModal" class="modal">
+  <div class="sheet">
+    <h2 id="editTitle">Νέος κωδικός</h2>
+
+    <div class="two-col">
+      <div class="field">
+        <label>Άτομο</label>
+        <button type="button" id="editPersonBtn" class="btn ghost" style="width:100%;justify-content:space-between">
+          <span id="editPersonVal">—</span><span style="opacity:.6">▾</span>
+        </button>
+      </div>
+      <div class="field">
+        <label>Κατηγορία</label>
+        <button type="button" id="editCategoryBtn" class="btn ghost" style="width:100%;justify-content:space-between">
+          <span id="editCategoryVal">—</span><span style="opacity:.6">▾</span>
+        </button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Υποκατηγορία</label>
+      <button type="button" id="editSubcategoryBtn" class="btn ghost" style="width:100%;justify-content:space-between">
+        <span id="editSubcategoryVal">—</span><span style="opacity:.6">▾</span>
+      </button>
+    </div>
+
+    <div id="passwordFields">
+      <div class="field">
+        <label for="pwName">Τίτλος</label>
+        <input id="pwName" placeholder="π.χ. Gmail προσωπικό" />
+      </div>
+      <div class="field">
+        <label for="pwSite">Ιστοσελίδα / URL</label>
+        <input id="pwSite" placeholder="https://..." />
+      </div>
+      <div class="field">
+        <label for="pwUser">Username / Email</label>
+        <input id="pwUser" autocomplete="off" />
+      </div>
+      <div class="field pw-field">
+        <label for="pwPass">Password</label>
+        <input id="pwPass" type="password" autocomplete="new-password" />
+        <div class="pw-actions" style="top:26px">
+          <button id="pwGen" title="Δημιουργία" aria-label="gen">🎲</button>
+          <button id="pwShow" title="Δείξε" aria-label="show">👁</button>
+        </div>
+        <div class="strength"><div id="editStrength" style="width:0%"></div></div>
+      </div>
+      <div class="field">
+        <label for="pwNotes">Σημειώσεις</label>
+        <textarea id="pwNotes" placeholder="Προαιρετικά..."></textarea>
+      </div>
+    </div>
+    <div id="noteFields" class="hidden">
+      <div class="field">
+        <label for="ntTitle">Τίτλος</label>
+        <input id="ntTitle" placeholder="Τίτλος σημείωσης" />
+      </div>
+      <div class="field">
+        <label for="ntBody">Κείμενο</label>
+        <textarea id="ntBody" style="min-height:220px"></textarea>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="deleteItemBtn" class="btn danger hidden">Διαγραφή</button>
+      <div class="spacer"></div>
+      <button id="cancelEditBtn" class="btn ghost">Ακύρωση</button>
+      <button id="saveItemBtn" class="btn">Αποθήκευση</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div id="viewModal" class="modal">
+  <div class="sheet">
+    <h2 id="viewTitle"></h2>
+    <div id="viewTags" class="tags" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+    <div id="viewBody"></div>
+    <div class="actions">
+      <button id="editFromViewBtn" class="btn ghost">Επεξεργασία</button>
+      <div class="spacer"></div>
+      <button id="closeViewBtn" class="btn">Κλείσιμο</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROMPT MODAL (generic) -->
+<div id="promptModal" class="modal">
+  <div class="sheet">
+    <h2 id="promptTitle"></h2>
+    <div id="promptMsg" class="hint" style="margin-top:0"></div>
+    <div class="field pw-field">
+      <input id="promptInput" type="password" />
+    </div>
+    <div id="promptError" class="error"></div>
+    <div class="actions">
+      <button id="promptCancel" class="btn ghost">Ακύρωση</button>
+      <button id="promptOk" class="btn">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- PICKER MODAL (for filters & form dropdowns) -->
+<div id="pickerModal" class="modal">
+  <div class="sheet">
+    <h2 id="pickerTitle"></h2>
+    <div id="pickerList" class="picker-list"></div>
+    <div class="actions">
+      <button id="pickerClose" class="btn ghost">Κλείσιμο</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+"use strict";
+
+/* ============ STORAGE ============ */
+const LS_KEY = "vault.v1";
+const WA_KEY = "vault.webauthn.v1";
+const SETTINGS_KEY = "vault.settings.v1";
+
+const store = {
+  get vault(){ try{return JSON.parse(localStorage.getItem(LS_KEY)||"null")}catch{return null} },
+  set vault(v){ localStorage.setItem(LS_KEY, JSON.stringify(v)) },
+  clearVault(){ localStorage.removeItem(LS_KEY) },
+  get webauthn(){ try{return JSON.parse(localStorage.getItem(WA_KEY)||"null")}catch{return null} },
+  set webauthn(v){ if(v===null) localStorage.removeItem(WA_KEY); else localStorage.setItem(WA_KEY, JSON.stringify(v)) },
+  get settings(){ try{return JSON.parse(localStorage.getItem(SETTINGS_KEY)||"{}")}catch{return {}} },
+  set settings(v){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(v)) },
+};
+
+/* ============ CRYPTO ============ */
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+function b64(bytes){ let s=""; const b=new Uint8Array(bytes); for(let i=0;i<b.length;i++)s+=String.fromCharCode(b[i]); return btoa(s); }
+function unb64(str){ const s=atob(str); const b=new Uint8Array(s.length); for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i); return b; }
+function randBytes(n){ const b=new Uint8Array(n); crypto.getRandomValues(b); return b; }
+
+async function deriveKey(password, salt, iterations=250000){
+  const baseKey = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt, iterations, hash:"SHA-256"},
+    baseKey,
+    {name:"AES-GCM", length:256},
+    false,
+    ["encrypt","decrypt"]
+  );
+}
+async function encryptJSON(obj, key){
+  const iv = randBytes(12);
+  const ct = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, enc.encode(JSON.stringify(obj)));
+  return { iv: b64(iv), ct: b64(ct) };
+}
+async function decryptJSON(payload, key){
+  const iv = unb64(payload.iv);
+  const ct = unb64(payload.ct);
+  const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, ct);
+  return JSON.parse(dec.decode(pt));
+}
+
+/* ============ DEFAULT SEED ============ */
+const DEFAULT_PEOPLE = ["Δημήτρης","Ίννα","Λουκάς","Λυδία","Μάνα","Πατέρας","Γιάννα","Μάξιμος","Γραφείο"];
+const DEFAULT_CATEGORIES = {
+  "emails":     [],
+  "shops":      [],
+  "bank":       [],
+  "υπηρεσίες":  [],
+  "general":    [],
+  "social":     [],
+};
+
+function seedDataShape(existing){
+  const d = existing || {};
+  return {
+    passwords: Array.isArray(d.passwords) ? d.passwords : [],
+    notes:     Array.isArray(d.notes)     ? d.notes     : [],
+    people:    Array.isArray(d.people) && d.people.length ? d.people : [...DEFAULT_PEOPLE],
+    categories: (d.categories && typeof d.categories === "object" && Object.keys(d.categories).length)
+                ? d.categories : JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
+    dropbox: (d.dropbox && typeof d.dropbox === "object") ? d.dropbox : null,
+    // dropbox = { appKey, refreshToken, accessToken, expiresAt, lastUpload }
+  };
+}
+
+/* ============ STATE ============ */
+let state = {
+  key: null,
+  masterPwd: null,
+  vault: null,
+  data: seedDataShape(null),
+  tab: "passwords",
+  filter: "",
+  fPeople: new Set(),        // empty = all
+  fCategories: new Set(),    // empty = all
+  fSubcategories: new Set(), // set of "cat::sub" keys; empty = all
+  editingId: null,
+  editingKind: null,
+  editingPerson: "",
+  editingCategory: "",
+  editingSubcategory: "",
+  autolockTimer: null,
+};
+const subKey = (cat, sub) => cat+"::"+sub;
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+
+/* ============ UI HELPERS ============ */
+const $ = sel => document.querySelector(sel);
+const $$ = sel => document.querySelectorAll(sel);
+
+function showToast(msg, ms=1800){
+  const t=$("#toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(showToast._t); showToast._t=setTimeout(()=>t.classList.remove("show"), ms);
+}
+function openModal(id){ $(id).classList.add("open"); }
+function closeModal(id){ $(id).classList.remove("open"); }
+
+function passwordStrength(pw){
+  if(!pw) return {score:0,color:"var(--err)"};
+  let s=0;
+  if(pw.length>=8) s++;
+  if(pw.length>=12) s++;
+  if(/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++;
+  if(/\d/.test(pw)) s++;
+  if(/[^A-Za-z0-9]/.test(pw)) s++;
+  const colors=["var(--err)","var(--err)","var(--warn)","var(--warn)","var(--ok)","var(--ok)"];
+  return {score:s, color:colors[s]};
+}
+function updateStrengthBar(el, pw){
+  const {score,color}=passwordStrength(pw);
+  el.style.width = (score*20)+"%";
+  el.style.background = color;
+}
+function generatePassword(len=20){
+  const A="ABCDEFGHJKLMNPQRSTUVWXYZ", a="abcdefghijkmnpqrstuvwxyz", n="23456789", s="!@#$%^&*()_+-=[]{};:,.?";
+  const all=A+a+n+s;
+  const req=[A,a,n,s];
+  let out="";
+  const buf=new Uint32Array(len); crypto.getRandomValues(buf);
+  for(let i=0;i<len;i++) out+=all[buf[i]%all.length];
+  for(let i=0;i<req.length;i++){
+    if(!new RegExp("["+req[i].replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&")+"]").test(out)){
+      const pos=Math.floor(crypto.getRandomValues(new Uint32Array(1))[0]/0x100000000*len);
+      const ch=req[i][crypto.getRandomValues(new Uint32Array(1))[0]%req[i].length];
+      out = out.slice(0,pos)+ch+out.slice(pos+1);
+    }
+  }
+  return out;
+}
+async function copyText(text){
+  try{
+    await navigator.clipboard.writeText(text);
+    showToast("Αντιγράφηκε ✓");
+    setTimeout(()=>{ try{navigator.clipboard.writeText("")}catch{} }, 30000);
+  }catch{
+    const ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select();
+    try{document.execCommand("copy"); showToast("Αντιγράφηκε ✓")}catch{ showToast("Αποτυχία αντιγραφής") }
+    ta.remove();
+  }
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+/* ============ AUTOLOCK ============ */
+function resetAutolock(){
+  clearTimeout(state.autolockTimer);
+  const ms = Number(store.settings.autolock ?? 300000);
+  if(ms>0 && state.key){
+    state.autolockTimer = setTimeout(lock, ms);
+  }
+}
+["mousemove","keydown","touchstart","click"].forEach(ev=>window.addEventListener(ev, resetAutolock, {passive:true}));
+
+/* ============ VAULT OPS ============ */
+async function createVault(password){
+  const salt = randBytes(16);
+  const iterations = 250000;
+  const key = await deriveKey(password, salt, iterations);
+  const checkPlain = "OK-"+b64(randBytes(8));
+  const check = await encryptJSON(checkPlain, key);
+  const seed = seedDataShape(null);
+  const data = await encryptJSON(seed, key);
+  const vault = { v:1, salt:b64(salt), iterations, check, data };
+  store.vault = vault;
+  state.vault = vault;
+  state.key = key;
+  state.masterPwd = password;
+  state.data = seed;
+}
+async function unlockVault(password){
+  const v = store.vault; if(!v) throw new Error("no-vault");
+  const key = await deriveKey(password, unb64(v.salt), v.iterations);
+  try{
+    const chk = await decryptJSON(v.check, key);
+    if(typeof chk!=="string" || !chk.startsWith("OK-")) throw 0;
+  }catch{ throw new Error("bad-password"); }
+  const rawData = await decryptJSON(v.data, key);
+  state.vault = v;
+  state.key = key;
+  state.masterPwd = password;
+  state.data = seedDataShape(rawData);
+  // If migration filled in defaults, persist so next load has them
+  if(!rawData.people || !rawData.categories){ await saveData(); }
+}
+async function saveData(){
+  const encData = await encryptJSON(state.data, state.key);
+  state.vault.data = encData;
+  store.vault = state.vault;
+}
+async function changeMasterPassword(newPw){
+  const salt = randBytes(16);
+  const iterations = 250000;
+  const key = await deriveKey(newPw, salt, iterations);
+  const checkPlain = "OK-"+b64(randBytes(8));
+  const check = await encryptJSON(checkPlain, key);
+  const data = await encryptJSON(state.data, key);
+  const vault = { v:1, salt:b64(salt), iterations, check, data };
+  store.vault = vault;
+  state.vault = vault;
+  state.key = key;
+  state.masterPwd = newPw;
+  if(store.webauthn){ store.webauthn = null; showToast("Fingerprint απενεργοποιήθηκε (χρειάζεται νέο enroll)"); }
+}
+function lock(){
+  state.key = null;
+  state.masterPwd = null;
+  state.data = seedDataShape(null);
+  state.fPeople.clear();
+  state.fCategories.clear();
+  state.fSubcategories.clear();
+  clearTimeout(state.autolockTimer);
+  $("#appView").classList.add("hidden");
+  $("#loginView").classList.remove("hidden");
+  $("#masterInput").value="";
+  refreshLoginUI();
+  $("#masterInput").focus();
+}
+
+/* ============ FILTER CHIPS (no-op after strips replaced them) ============ */
+function updateFilterChips(){ /* strips render their own active state */ }
+
+/* ============ PEOPLE STRIP ============ */
+function personInitials(name){
+  const parts = String(name||"").trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return "?";
+  if(parts.length===1) return parts[0].slice(0,2).toUpperCase();
+  return (parts[0][0]+parts[1][0]).toUpperCase();
+}
+function personColor(name){
+  let h = 5381;
+  const s = String(name||"");
+  for(let i=0;i<s.length;i++) h = ((h<<5)+h + s.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  const hue2 = (hue + 40) % 360;
+  return `linear-gradient(135deg, hsl(${hue} 65% 55%), hsl(${hue2} 65% 45%))`;
+}
+
+let _pressTimer = null;
+function attachLongPress(el, onLong){
+  const start = (e)=>{
+    clearTimeout(_pressTimer);
+    el.classList.add("pressing");
+    _pressTimer = setTimeout(()=>{
+      el.classList.remove("pressing");
+      onLong();
+      _pressTimer = null;
+    }, 500);
+  };
+  const cancel = ()=>{ el.classList.remove("pressing"); clearTimeout(_pressTimer); _pressTimer=null; };
+  el.addEventListener("touchstart", start, {passive:true});
+  el.addEventListener("touchend", cancel);
+  el.addEventListener("touchmove", cancel, {passive:true});
+  el.addEventListener("touchcancel", cancel);
+  el.addEventListener("mousedown", start);
+  el.addEventListener("mouseup", cancel);
+  el.addEventListener("mouseleave", cancel);
+  el.addEventListener("contextmenu", e=>{ e.preventDefault(); cancel(); onLong(); });
+}
+
+function renderPeopleStrip(){
+  const strip = $("#peopleStrip");
+  strip.innerHTML = "";
+  const items = currentItems();
+  const counts = new Map();
+  for(const it of items){ counts.set(it.person||"", (counts.get(it.person||"")||0)+1); }
+
+  const totalCount = items.length;
+  const all = document.createElement("div");
+  all.className = "person-card"+(state.fPeople.size===0?" active":"");
+  all.innerHTML = `<div class="person-avatar all">👥</div>
+    <div class="person-name">Όλοι</div>
+    <div class="person-count">${totalCount}</div>`;
+  all.addEventListener("click", ()=>{ state.fPeople.clear(); renderPeopleStrip(); renderCategoryStrip(); renderSubcategoryStrip(); renderList(); });
+  strip.appendChild(all);
+
+  for(const p of state.data.people){
+    const card = document.createElement("div");
+    const isActive = state.fPeople.has(p);
+    card.className = "person-card"+(isActive?" active":"");
+    const cnt = counts.get(p)||0;
+    card.innerHTML = `<div class="person-avatar" style="background:${personColor(p)}">${escapeHtml(personInitials(p))}</div>
+      <div class="person-name">${escapeHtml(p)}</div>
+      <div class="person-count">${cnt}</div>`;
+    card.addEventListener("click", ()=>{
+      if(state.fPeople.has(p)) state.fPeople.delete(p); else state.fPeople.add(p);
+      renderPeopleStrip(); renderCategoryStrip(); renderSubcategoryStrip(); renderList();
+    });
+    attachLongPress(card, ()=>openPersonActions(p));
+    strip.appendChild(card);
+  }
+
+  // "+ Νέο" card
+  const addCard = document.createElement("div");
+  addCard.className = "person-card add";
+  addCard.innerHTML = `<div class="person-avatar add">+</div>
+    <div class="person-name">Νέο</div>
+    <div class="person-count">&nbsp;</div>`;
+  addCard.addEventListener("click", async ()=>{
+    const v = await promptText("Νέο πρόσωπο","π.χ. Θείος Νίκος");
+    if(!v) return;
+    if(!state.data.people.includes(v)){
+      state.data.people.push(v);
+      await saveData();
+      renderPeopleStrip();
+      renderPeopleMgr();
+    }
+  });
+  strip.appendChild(addCard);
+}
+
+function openPersonActions(p){
+  openPicker({
+    title: `👤 ${p}`,
+    allowNone: false,
+    options: [
+      {value:"rename", label:"✎ Μετονομασία"},
+      {value:"delete", label:"🗑 Διαγραφή"},
+    ],
+    async onPick(v){
+      if(v==="rename"){
+        const nv = await promptText("Νέο όνομα", p);
+        if(!nv || nv===p) return;
+        await renamePerson(p, nv);
+      } else if(v==="delete"){
+        await deletePerson(p);
+      }
+    }
+  });
+}
+
+async function renamePerson(oldName, newName){
+  newName = newName.trim();
+  if(!newName) return;
+  const idx = state.data.people.indexOf(oldName);
+  if(idx<0) return;
+  if(state.data.people.includes(newName)){
+    if(!confirm(`Υπάρχει ήδη "${newName}". Θα ενοποιηθούν οι εγγραφές. Συνέχεια;`)) return;
+    state.data.people.splice(idx,1);
+  } else {
+    state.data.people[idx] = newName;
+  }
+  for(const p of state.data.passwords) if(p.person===oldName) p.person = newName;
+  for(const n of state.data.notes)     if(n.person===oldName) n.person = newName;
+  if(state.fPeople.has(oldName)){ state.fPeople.delete(oldName); state.fPeople.add(newName); }
+  await saveData();
+  renderPeopleStrip();
+  renderPeopleMgr();
+  renderList();
+  showToast("Μετονομάστηκε ✓");
+}
+async function deletePerson(p){
+  const inUse = [...state.data.passwords, ...state.data.notes].some(x => x.person===p);
+  if(inUse && !confirm(`Το "${p}" χρησιμοποιείται σε εγγραφές. Θα διαγραφεί μόνο από τη λίστα (οι εγγραφές παραμένουν αλλά χωρίς άτομο). Συνέχεια;`)) return;
+  state.data.people = state.data.people.filter(x=>x!==p);
+  state.fPeople.delete(p);
+  await saveData();
+  renderPeopleStrip();
+  renderPeopleMgr();
+  renderList();
+  showToast("Διαγράφηκε");
+}
+
+/* ============ CATEGORY STRIP ============ */
+const CATEGORY_ICONS = {
+  "emails":"📧", "email":"📧", "e-mail":"📧",
+  "shops":"🛒", "shopping":"🛒", "eshop":"🛒", "e-shop":"🛒",
+  "bank":"🏦", "banks":"🏦", "τράπεζα":"🏦", "τραπεζες":"🏦",
+  "υπηρεσίες":"⚙", "υπηρεσιες":"⚙", "services":"⚙",
+  "general":"📄", "γενικά":"📄",
+  "social":"💬", "socials":"💬",
+  "δουλειά":"💼", "work":"💼", "job":"💼",
+  "streaming":"🎬", "video":"🎬", "movies":"🎬",
+  "games":"🎮", "gaming":"🎮",
+  "cloud":"☁", "hosting":"☁",
+  "wifi":"📶", "network":"📶",
+  "school":"🎓", "σχολείο":"🎓",
+  "health":"🩺", "υγεία":"🩺",
+};
+function categoryIcon(name){
+  return CATEGORY_ICONS[String(name||"").toLowerCase().trim()] || "📁";
+}
+
+function renderCategoryStrip(){
+  const strip = $("#categoryStrip");
+  strip.innerHTML = "";
+  const items = currentItems().filter(it => state.fPeople.size===0 || state.fPeople.has(it.person||""));
+  const counts = new Map();
+  for(const it of items){ counts.set(it.category||"", (counts.get(it.category||"")||0)+1); }
+
+  const all = document.createElement("div");
+  all.className = "person-card"+(state.fCategories.size===0?" active":"");
+  all.innerHTML = `<div class="person-avatar all">📚</div>
+    <div class="person-name">Όλες</div>
+    <div class="person-count">${items.length}</div>`;
+  all.addEventListener("click", ()=>{
+    state.fCategories.clear(); state.fSubcategories.clear();
+    renderCategoryStrip(); renderSubcategoryStrip(); renderList();
+  });
+  strip.appendChild(all);
+
+  for(const cat of Object.keys(state.data.categories)){
+    const card = document.createElement("div");
+    const isActive = state.fCategories.has(cat);
+    card.className = "person-card"+(isActive?" active":"");
+    const cnt = counts.get(cat)||0;
+    card.innerHTML = `<div class="person-avatar" style="background:${personColor(cat)}">${categoryIcon(cat)}</div>
+      <div class="person-name">${escapeHtml(cat)}</div>
+      <div class="person-count">${cnt}</div>`;
+    card.addEventListener("click", ()=>{
+      if(state.fCategories.has(cat)){
+        state.fCategories.delete(cat);
+        // Also drop any subcategory filters belonging to this cat
+        for(const k of [...state.fSubcategories]) if(k.startsWith(cat+"::")) state.fSubcategories.delete(k);
+      } else {
+        state.fCategories.add(cat);
+      }
+      renderCategoryStrip(); renderSubcategoryStrip(); renderList();
+    });
+    attachLongPress(card, ()=>openCategoryActions(cat));
+    strip.appendChild(card);
+  }
+
+  const addCard = document.createElement("div");
+  addCard.className = "person-card add";
+  addCard.innerHTML = `<div class="person-avatar add">+</div>
+    <div class="person-name">Νέα</div>
+    <div class="person-count">&nbsp;</div>`;
+  addCard.addEventListener("click", async ()=>{
+    const v = await promptText("Νέα κατηγορία","π.χ. δουλειά");
+    if(!v) return;
+    if(!state.data.categories[v]){
+      state.data.categories[v] = [];
+      await saveData();
+      renderCategoryStrip();
+      renderCategoriesMgr();
+    }
+  });
+  strip.appendChild(addCard);
+}
+
+function renderSubcategoryStrip(){
+  const strip = $("#subcategoryStrip");
+  const label = $("#subcategoryLabel");
+  if(state.fCategories.size===0){
+    strip.classList.add("hidden");
+    label.classList.add("hidden");
+    strip.innerHTML = "";
+    return;
+  }
+  strip.classList.remove("hidden");
+  label.classList.remove("hidden");
+  const catsLabel = [...state.fCategories].join(" + ");
+  label.innerHTML = `🏷 Υποκατηγορίες <span style="color:var(--brand);text-transform:none;letter-spacing:0">(${escapeHtml(catsLabel)})</span>`;
+  strip.innerHTML = "";
+
+  const items = currentItems().filter(it =>
+    (state.fPeople.size===0 || state.fPeople.has(it.person||"")) &&
+    state.fCategories.has(it.category||"")
+  );
+  const counts = new Map();
+  for(const it of items){
+    const k = subKey(it.category||"", it.subcategory||"");
+    counts.set(k, (counts.get(k)||0)+1);
+  }
+
+  const all = document.createElement("div");
+  all.className = "person-card"+(state.fSubcategories.size===0?" active":"");
+  all.innerHTML = `<div class="person-avatar all">🏷</div>
+    <div class="person-name">Όλες</div>
+    <div class="person-count">${items.length}</div>`;
+  all.addEventListener("click", ()=>{
+    state.fSubcategories.clear();
+    renderSubcategoryStrip(); renderList();
+  });
+  strip.appendChild(all);
+
+  // For each selected category, show its subcategories
+  for(const cat of state.fCategories){
+    const subs = state.data.categories[cat] || [];
+    for(const s of subs){
+      const key = subKey(cat, s);
+      const card = document.createElement("div");
+      const isActive = state.fSubcategories.has(key);
+      card.className = "person-card"+(isActive?" active":"");
+      const cnt = counts.get(key)||0;
+      const displayName = state.fCategories.size>1 ? `${s}` : s;
+      const subLabel = state.fCategories.size>1
+        ? `<div class="person-count" style="color:${isActive?'var(--brand)':'var(--muted)'};font-size:9px">${escapeHtml(cat)}</div>`
+        : "";
+      card.innerHTML = `<div class="person-avatar" style="background:${personColor(s)}">${escapeHtml(personInitials(s))}</div>
+        <div class="person-name">${escapeHtml(displayName)}</div>
+        ${subLabel}
+        <div class="person-count">${cnt}</div>`;
+      card.addEventListener("click", ()=>{
+        if(state.fSubcategories.has(key)) state.fSubcategories.delete(key); else state.fSubcategories.add(key);
+        renderSubcategoryStrip(); renderList();
+      });
+      attachLongPress(card, ()=>openSubcategoryActions(cat, s));
+      strip.appendChild(card);
+    }
+  }
+
+  // Add card — adds into the first selected category (or the only one)
+  const targetCat = state.fCategories.size===1 ? [...state.fCategories][0] : null;
+  if(targetCat){
+    const addCard = document.createElement("div");
+    addCard.className = "person-card add";
+    addCard.innerHTML = `<div class="person-avatar add">+</div>
+      <div class="person-name">Νέα</div>
+      <div class="person-count">&nbsp;</div>`;
+    addCard.addEventListener("click", async ()=>{
+      const v = await promptText(`Νέα υποκατηγορία στο "${targetCat}"`,"π.χ. gmail");
+      if(!v) return;
+      if(!state.data.categories[targetCat].includes(v)){
+        state.data.categories[targetCat].push(v);
+        await saveData();
+        renderSubcategoryStrip();
+        renderCategoriesMgr();
+      }
+    });
+    strip.appendChild(addCard);
+  }
+}
+
+function openCategoryActions(cat){
+  openPicker({
+    title: `📁 ${cat}`,
+    allowNone: false,
+    options: [
+      {value:"rename", label:"✎ Μετονομασία"},
+      {value:"subs", label:"⋯ Διαχείριση υποκατηγοριών"},
+      {value:"delete", label:"🗑 Διαγραφή"},
+    ],
+    async onPick(v){
+      if(v==="rename"){
+        const nv = await promptText("Μετονομασία κατηγορίας", cat);
+        if(nv && nv!==cat) await renameCategory(cat, nv);
+      } else if(v==="subs"){
+        openSubcategoryMgr(cat);
+      } else if(v==="delete"){
+        const inUse = [...state.data.passwords, ...state.data.notes].some(x => x.category===cat);
+        if(inUse && !confirm(`Η κατηγορία "${cat}" χρησιμοποιείται. Θα διαγραφεί μόνο από τη λίστα (οι εγγραφές παραμένουν). Συνέχεια;`)) return;
+        delete state.data.categories[cat];
+        state.fCategories.delete(cat);
+        for(const k of [...state.fSubcategories]) if(k.startsWith(cat+"::")) state.fSubcategories.delete(k);
+        await saveData();
+        renderCategoryStrip();
+        renderSubcategoryStrip();
+        renderCategoriesMgr();
+        renderList();
+        showToast("Διαγράφηκε");
+      }
+    }
+  });
+}
+
+function openSubcategoryActions(cat, sub){
+  openPicker({
+    title: `🏷 ${sub}`,
+    allowNone: false,
+    options: [
+      {value:"rename", label:"✎ Μετονομασία"},
+      {value:"delete", label:"🗑 Διαγραφή"},
+    ],
+    async onPick(v){
+      if(v==="rename"){
+        const nv = await promptText("Μετονομασία υποκατηγορίας", sub);
+        if(nv && nv!==sub) await renameSubcategory(cat, sub, nv);
+      } else if(v==="delete"){
+        const inUse = [...state.data.passwords, ...state.data.notes].some(x => x.category===cat && x.subcategory===sub);
+        if(inUse && !confirm(`Η υποκατηγορία "${sub}" χρησιμοποιείται. Οι εγγραφές παραμένουν χωρίς υποκατηγορία. Συνέχεια;`)) return;
+        state.data.categories[cat] = state.data.categories[cat].filter(x=>x!==sub);
+        state.fSubcategories.delete(subKey(cat, sub));
+        await saveData();
+        renderSubcategoryStrip();
+        renderList();
+        showToast("Διαγράφηκε");
+      }
+    }
+  });
+}
+
+async function renameSubcategory(cat, oldName, newName){
+  newName = newName.trim();
+  if(!newName || newName===oldName) return;
+  const arr = state.data.categories[cat] || [];
+  const idx = arr.indexOf(oldName);
+  if(idx<0) return;
+  if(arr.includes(newName)){
+    if(!confirm(`Υπάρχει ήδη "${newName}" στην ${cat}. Θα ενοποιηθούν. Συνέχεια;`)) return;
+    arr.splice(idx,1);
+  } else {
+    arr[idx] = newName;
+  }
+  for(const p of state.data.passwords) if(p.category===cat && p.subcategory===oldName) p.subcategory = newName;
+  for(const n of state.data.notes)     if(n.category===cat && n.subcategory===oldName) n.subcategory = newName;
+  const oldK = subKey(cat, oldName), newK = subKey(cat, newName);
+  if(state.fSubcategories.has(oldK)){ state.fSubcategories.delete(oldK); state.fSubcategories.add(newK); }
+  await saveData();
+  renderSubcategoryStrip();
+  renderCategoriesMgr();
+  renderList();
+  showToast("Μετονομάστηκε ✓");
+}
+
+/* Category rename */
+async function renameCategory(oldName, newName){
+  newName = newName.trim();
+  if(!newName || newName===oldName) return;
+  if(state.data.categories[newName]){
+    if(!confirm(`Υπάρχει ήδη κατηγορία "${newName}". Θα ενοποιηθούν. Συνέχεια;`)) return;
+    for(const s of state.data.categories[oldName]){
+      if(!state.data.categories[newName].includes(s)) state.data.categories[newName].push(s);
+    }
+    delete state.data.categories[oldName];
+  } else {
+    const rebuilt = {};
+    for(const k of Object.keys(state.data.categories)){
+      rebuilt[k===oldName?newName:k] = state.data.categories[k];
+    }
+    state.data.categories = rebuilt;
+  }
+  for(const p of state.data.passwords) if(p.category===oldName) p.category = newName;
+  for(const n of state.data.notes)     if(n.category===oldName) n.category = newName;
+  if(state.fCategories.has(oldName)){ state.fCategories.delete(oldName); state.fCategories.add(newName); }
+  // Update subcategory keys for that category
+  const migrated = new Set();
+  for(const k of state.fSubcategories){
+    if(k.startsWith(oldName+"::")) migrated.add(newName+"::"+k.slice(oldName.length+2));
+    else migrated.add(k);
+  }
+  state.fSubcategories = migrated;
+  await saveData();
+  renderCategoriesMgr();
+  renderCategoryStrip();
+  renderSubcategoryStrip();
+  renderList();
+  showToast("Μετονομάστηκε ✓");
+}
+
+/* ============ RENDER LIST ============ */
+function currentItems(){
+  return state.tab === "passwords"
+    ? state.data.passwords.map(p => ({...p, _kind:"password", _title:p.name||p.site||"(χωρίς τίτλο)", _sub:p.user||p.site||""}))
+    : state.data.notes.map(n => ({...n, _kind:"note", _title:n.title||"(χωρίς τίτλο)", _sub:(n.body||"").slice(0,80).replace(/\n/g," ")}));
+}
+
+function renderList(){
+  const container = $("#listContainer");
+  const q = state.filter.trim().toLowerCase();
+  let items = currentItems();
+
+  if(state.fPeople.size)     items = items.filter(it => state.fPeople.has(it.person||""));
+  if(state.fCategories.size) items = items.filter(it => state.fCategories.has(it.category||""));
+  if(state.fSubcategories.size) items = items.filter(it => state.fSubcategories.has(subKey(it.category||"", it.subcategory||"")));
+
+  if(q) items = items.filter(it => {
+    return (it._title.toLowerCase().includes(q)
+      || (it._sub||"").toLowerCase().includes(q)
+      || (it.site||"").toLowerCase().includes(q)
+      || (it.notes||"").toLowerCase().includes(q)
+      || (it.body||"").toLowerCase().includes(q)
+      || (it.person||"").toLowerCase().includes(q)
+      || (it.category||"").toLowerCase().includes(q)
+      || (it.subcategory||"").toLowerCase().includes(q));
+  });
+
+  items.sort((a,b)=> (b.updated||0)-(a.updated||0));
+
+  if(items.length===0){
+    const totalAll = currentItems().length;
+    container.innerHTML = `<div class="empty">${totalAll===0 ? "Πάτα το + για να προσθέσεις." : "Κανένα αποτέλεσμα με τα τρέχοντα φίλτρα."}</div>`;
+    return;
+  }
+  container.innerHTML = "";
+  for(const it of items){
+    const card = document.createElement("div");
+    card.className="card";
+    card.dataset.id = it.id;
+    const emoji = it._kind==="password" ? "🔐" : "📝";
+    let tags = "";
+    const bits = [];
+    if(it.person) bits.push(`<span class="tag person">👤 ${escapeHtml(it.person)}</span>`);
+    if(it.category){
+      const catText = it.subcategory ? `${it.category} / ${it.subcategory}` : it.category;
+      bits.push(`<span class="tag cat">📁 ${escapeHtml(catText)}</span>`);
+    }
+    if(bits.length) tags = `<div class="tags">${bits.join("")}</div>`;
+    card.innerHTML = `
+      <h3>${emoji} ${escapeHtml(it._title)}</h3>
+      <div class="sub">${escapeHtml(it._sub||"")}</div>
+      ${tags}
+    `;
+    card.addEventListener("click", ()=>openView(it.id));
+    container.appendChild(card);
+  }
+}
+
+/* ============ VIEW / EDIT ============ */
+function findItem(id){
+  return state.data.passwords.find(x=>x.id===id) || state.data.notes.find(x=>x.id===id);
+}
+function itemKind(id){
+  if(state.data.passwords.find(x=>x.id===id)) return "password";
+  if(state.data.notes.find(x=>x.id===id)) return "note";
+  return null;
+}
+
+function openView(id){
+  const it = findItem(id); if(!it) return;
+  state.editingId = id;
+  const kind = itemKind(id);
+  $("#viewTitle").textContent = (kind==="password"?"🔐 ":"📝 ") + (it.name||it.title||"(χωρίς τίτλο)");
+  const tagsEl = $("#viewTags");
+  tagsEl.innerHTML = "";
+  if(it.person) tagsEl.insertAdjacentHTML("beforeend", `<span class="tag person">👤 ${escapeHtml(it.person)}</span>`);
+  if(it.category){
+    const catText = it.subcategory ? `${it.category} / ${it.subcategory}` : it.category;
+    tagsEl.insertAdjacentHTML("beforeend", `<span class="tag cat">📁 ${escapeHtml(catText)}</span>`);
+  }
+  const body = $("#viewBody");
+  body.innerHTML="";
+  if(kind==="password"){
+    body.appendChild(makeRow("Ιστοσελίδα", it.site||"—", it.site && (()=>window.open(/^https?:/.test(it.site)?it.site:"https://"+it.site, "_blank"))));
+    body.appendChild(makeRow("Username", it.user||"—", it.user && (()=>copyText(it.user)), "Αντιγραφή"));
+    body.appendChild(makePasswordRow(it.pass||""));
+    if(it.notes) body.appendChild(makeNoteBlock(it.notes));
+  } else {
+    body.appendChild(makeNoteBlock(it.body||""));
+  }
+  openModal("#viewModal");
+}
+function makeRow(label, value, action, actionLabel="Άνοιγμα"){
+  const div = document.createElement("div");
+  div.className="field";
+  const safeVal = escapeHtml(value);
+  div.innerHTML = `<label>${label}</label>
+    <div class="row"><input value="${safeVal}" readonly style="flex:1" />
+      ${action ? `<button class="btn ghost" style="flex-shrink:0">${actionLabel}</button>` : ""}
+    </div>`;
+  if(action){
+    div.querySelector("button").addEventListener("click", action);
+    div.querySelector("input").addEventListener("click", e=>{ e.target.select(); });
+  }
+  return div;
+}
+function makePasswordRow(pw){
+  const div = document.createElement("div");
+  div.className="field pw-field";
+  div.innerHTML=`<label>Password</label>
+    <input type="password" value="${escapeHtml(pw)}" readonly />
+    <div class="pw-actions">
+      <button title="Δείξε" aria-label="show">👁</button>
+      <button title="Αντιγραφή" aria-label="copy">📋</button>
+    </div>`;
+  const input = div.querySelector("input");
+  const [showBtn, copyBtn] = div.querySelectorAll("button");
+  showBtn.addEventListener("click", ()=>{ input.type = input.type==="password"?"text":"password"; });
+  copyBtn.addEventListener("click", ()=>copyText(pw));
+  return div;
+}
+function makeNoteBlock(text){
+  const div=document.createElement("div"); div.className="field";
+  div.innerHTML=`<label>Σημειώσεις</label><pre class="note">${escapeHtml(text)}</pre>`;
+  return div;
+}
+
+function updateEditFieldsLabels(){
+  $("#editPersonVal").textContent = state.editingPerson || "—";
+  $("#editCategoryVal").textContent = state.editingCategory || "—";
+  $("#editSubcategoryVal").textContent = state.editingSubcategory || "—";
+}
+
+function openEdit(id){
+  state.editingId = id;
+  const kind = id ? itemKind(id) : state.tab==="passwords"?"password":"note";
+  state.editingKind = kind;
+  const isPw = kind==="password";
+
+  $("#passwordFields").classList.toggle("hidden", !isPw);
+  $("#noteFields").classList.toggle("hidden", isPw);
+  $("#deleteItemBtn").classList.toggle("hidden", !id);
+  $("#editTitle").textContent = id ? (isPw?"Επεξεργασία κωδικού":"Επεξεργασία σημείωσης") : (isPw?"Νέος κωδικός":"Νέα σημείωση");
+
+  const it = id ? findItem(id) : {};
+  const onlyPerson = state.fPeople.size===1 ? [...state.fPeople][0] : "";
+  const onlyCat = state.fCategories.size===1 ? [...state.fCategories][0] : "";
+  let onlySub = "";
+  if(state.fSubcategories.size===1){
+    const k = [...state.fSubcategories][0];
+    const [c, s] = k.split("::");
+    if(c===onlyCat) onlySub = s;
+  }
+  state.editingPerson = it.person || onlyPerson || "";
+  state.editingCategory = it.category || onlyCat || "";
+  state.editingSubcategory = it.subcategory || onlySub || "";
+  updateEditFieldsLabels();
+
+  if(isPw){
+    $("#pwName").value = it.name||"";
+    $("#pwSite").value = it.site||"";
+    $("#pwUser").value = it.user||"";
+    $("#pwPass").value = it.pass||"";
+    $("#pwPass").type = "password";
+    $("#pwNotes").value = it.notes||"";
+    updateStrengthBar($("#editStrength"), it.pass||"");
+  } else {
+    $("#ntTitle").value = it.title||"";
+    $("#ntBody").value = it.body||"";
+  }
+  closeModal("#viewModal");
+  openModal("#editModal");
+  setTimeout(()=>{ (isPw?$("#pwName"):$("#ntTitle")).focus(); }, 50);
+}
+
+async function saveEdit(){
+  const id = state.editingId;
+  const kind = state.editingKind;
+  const now = Date.now();
+  const commonFields = {
+    person: state.editingPerson || "",
+    category: state.editingCategory || "",
+    subcategory: state.editingSubcategory || "",
+    updated: now,
+  };
+  if(kind==="password"){
+    const obj = Object.assign({
+      id: id || uid(),
+      name: $("#pwName").value.trim(),
+      site: $("#pwSite").value.trim(),
+      user: $("#pwUser").value,
+      pass: $("#pwPass").value,
+      notes: $("#pwNotes").value,
+    }, commonFields);
+    if(!obj.name && !obj.site){ showToast("Χρειάζεται τίτλος ή site"); return; }
+    if(id){
+      const i = state.data.passwords.findIndex(x=>x.id===id);
+      if(i>=0) state.data.passwords[i] = obj;
+    } else state.data.passwords.push(obj);
+  } else {
+    const obj = Object.assign({
+      id: id || uid(),
+      title: $("#ntTitle").value.trim(),
+      body: $("#ntBody").value,
+    }, commonFields);
+    if(!obj.title && !obj.body){ showToast("Άδεια σημείωση"); return; }
+    if(id){
+      const i = state.data.notes.findIndex(x=>x.id===id);
+      if(i>=0) state.data.notes[i] = obj;
+    } else state.data.notes.push(obj);
+  }
+  try{ await saveData(); showToast("Αποθηκεύτηκε ✓"); }
+  catch(e){ showToast("Σφάλμα αποθήκευσης"); console.error(e); return; }
+  closeModal("#editModal");
+  state.editingId = null;
+  renderPeopleStrip();
+  renderCategoryStrip();
+  renderSubcategoryStrip();
+  renderList();
+}
+
+async function deleteItem(){
+  const id = state.editingId; if(!id) return;
+  if(!confirm("Διαγραφή αυτής της εγγραφής;")) return;
+  state.data.passwords = state.data.passwords.filter(x=>x.id!==id);
+  state.data.notes = state.data.notes.filter(x=>x.id!==id);
+  await saveData();
+  closeModal("#editModal");
+  state.editingId = null;
+  renderPeopleStrip();
+  renderList();
+  showToast("Διαγράφηκε");
+}
+
+/* ============ PICKER ============ */
+// Generic picker used by filters and by the edit-modal person/category/subcategory buttons.
+// opts: { title, options:[{value,label,count?}], allowNone, noneLabel, allowAdd, onAdd:()=>Promise<string|null>, current, onPick }
+function openPicker(opts){
+  $("#pickerTitle").textContent = opts.title;
+  const list = $("#pickerList");
+  list.innerHTML = "";
+
+  const addRow = (label, value, isSelected, extra="", cls="", onClick) => {
+    const el = document.createElement("div");
+    el.className = "picker-item"+(isSelected?" selected":"")+(cls?" "+cls:"");
+    el.innerHTML = `<span>${escapeHtml(label)}</span>${extra}`;
+    el.addEventListener("click", onClick);
+    list.appendChild(el);
+  };
+
+  if(opts.allowNone){
+    addRow(opts.noneLabel || "— Όλα —", "", opts.current==="", "", "", ()=>{
+      closeModal("#pickerModal");
+      opts.onPick("");
+    });
+  }
+  for(const o of opts.options){
+    const cnt = (o.count!=null) ? `<span class="count">${o.count}</span>` : "";
+    addRow(o.label, o.value, opts.current===o.value, cnt, "", ()=>{
+      closeModal("#pickerModal");
+      opts.onPick(o.value);
+    });
+  }
+  if(opts.allowAdd){
+    addRow(opts.addLabel || "+ Νέο...", "__add__", false, "", "add", async ()=>{
+      const v = await opts.onAdd();
+      if(v){
+        closeModal("#pickerModal");
+        opts.onPick(v);
+      }
+    });
+  }
+  openModal("#pickerModal");
+}
+
+function countBy(items, field, val){
+  return items.filter(it => (it[field]||"") === val).length;
+}
+
+// (obsolete single-select filter pickers removed — strips do this now)
+
+/* ============ EDIT MODAL PICKERS ============ */
+async function promptText(title, placeholder=""){
+  return await askPromptText(title, "", placeholder);
+}
+
+function askPromptText(title, msg, placeholder){
+  return new Promise(resolve=>{
+    $("#promptTitle").textContent = title;
+    $("#promptMsg").textContent = msg||"";
+    $("#promptInput").type = "text";
+    $("#promptInput").placeholder = placeholder||"";
+    $("#promptInput").value = "";
+    $("#promptError").textContent = "";
+    openModal("#promptModal");
+    setTimeout(()=>$("#promptInput").focus(), 50);
+    const ok = ()=>{ const v = $("#promptInput").value.trim(); cleanup(); resolve(v||null); };
+    const cancel = ()=>{ cleanup(); resolve(null); };
+    const keyHandler = e=>{ if(e.key==="Enter"){ e.preventDefault(); ok(); } if(e.key==="Escape") cancel(); };
+    function cleanup(){
+      $("#promptOk").removeEventListener("click", ok);
+      $("#promptCancel").removeEventListener("click", cancel);
+      $("#promptInput").removeEventListener("keydown", keyHandler);
+      closeModal("#promptModal");
+      $("#promptInput").placeholder = "";
+    }
+    $("#promptOk").addEventListener("click", ok);
+    $("#promptCancel").addEventListener("click", cancel);
+    $("#promptInput").addEventListener("keydown", keyHandler);
+  });
+}
+
+function openEditPersonPicker(){
+  openPicker({
+    title: "Επιλογή προσώπου",
+    allowNone: true, noneLabel:"— Χωρίς —",
+    current: state.editingPerson,
+    options: state.data.people.map(p => ({value:p, label:p})),
+    allowAdd: true, addLabel:"+ Νέο πρόσωπο...",
+    onAdd: async () => {
+      const v = await promptText("Νέο πρόσωπο","π.χ. Θείος Νίκος");
+      if(!v) return null;
+      if(!state.data.people.includes(v)){
+        state.data.people.push(v);
+        await saveData();
+        renderPeopleMgr();
+        renderPeopleStrip();
+      }
+      return v;
+    },
+    onPick(v){ state.editingPerson = v; updateEditFieldsLabels(); }
+  });
+}
+function openEditCategoryPicker(){
+  openPicker({
+    title: "Επιλογή κατηγορίας",
+    allowNone: true, noneLabel:"— Χωρίς —",
+    current: state.editingCategory,
+    options: Object.keys(state.data.categories).map(c=>({value:c, label:c})),
+    allowAdd: true, addLabel:"+ Νέα κατηγορία...",
+    onAdd: async () => {
+      const v = await promptText("Νέα κατηγορία","π.χ. δουλειά");
+      if(!v) return null;
+      if(!state.data.categories[v]){
+        state.data.categories[v] = [];
+        await saveData();
+        renderCategoriesMgr();
+        renderCategoryStrip();
+      }
+      return v;
+    },
+    onPick(v){
+      state.editingCategory = v;
+      // Reset subcategory if it's not in the new category's list
+      if(state.editingSubcategory){
+        const subs = state.data.categories[v] || [];
+        if(!subs.includes(state.editingSubcategory)) state.editingSubcategory = "";
+      }
+      updateEditFieldsLabels();
+    }
+  });
+}
+function openEditSubcategoryPicker(){
+  if(!state.editingCategory){ showToast("Διάλεξε πρώτα κατηγορία"); return; }
+  const subs = state.data.categories[state.editingCategory] || [];
+  openPicker({
+    title: `Υποκατηγορία (${state.editingCategory})`,
+    allowNone: true, noneLabel:"— Χωρίς —",
+    current: state.editingSubcategory,
+    options: subs.map(s=>({value:s, label:s})),
+    allowAdd: true, addLabel:"+ Νέα υποκατηγορία...",
+    onAdd: async () => {
+      const v = await promptText(`Νέα υποκατηγορία στο "${state.editingCategory}"`,"π.χ. gmail");
+      if(!v) return null;
+      const arr = state.data.categories[state.editingCategory];
+      if(!arr.includes(v)){
+        arr.push(v);
+        await saveData();
+        renderSubcategoryStrip();
+      }
+      return v;
+    },
+    onPick(v){ state.editingSubcategory = v; updateEditFieldsLabels(); }
+  });
+}
+
+/* ============ SETTINGS PANEL: PEOPLE & CATEGORIES MGR ============ */
+function renderPeopleMgr(){
+  const c = $("#peopleMgr");
+  c.innerHTML = "";
+  for(const p of state.data.people){
+    const pill = document.createElement("span");
+    pill.className="mgr-pill";
+    pill.innerHTML = `<span>${escapeHtml(p)}</span>
+      <button title="Μετονομασία" style="color:var(--muted)">✎</button>
+      <button title="Διαγραφή">×</button>`;
+    const [renameBtn, delBtn] = pill.querySelectorAll("button");
+    renameBtn.addEventListener("click", async ()=>{
+      const nv = await promptText("Μετονομασία", p);
+      if(nv && nv!==p) await renamePerson(p, nv);
+    });
+    delBtn.addEventListener("click", ()=>deletePerson(p));
+    c.appendChild(pill);
+  }
+}
+function renderCategoriesMgr(){
+  const c = $("#categoriesMgr");
+  c.innerHTML = "";
+  for(const cat of Object.keys(state.data.categories)){
+    const subs = state.data.categories[cat] || [];
+    const subCount = subs.length ? ` <span style="color:var(--muted);font-size:11px">(${subs.length})</span>` : "";
+    const pill = document.createElement("span");
+    pill.className="mgr-pill";
+    pill.innerHTML = `<span>${escapeHtml(cat)}${subCount}</span>
+      <button title="Μετονομασία" style="color:var(--muted)">✎</button>
+      <button title="Διαχείριση υποκατηγοριών" style="color:var(--muted)">⋯</button>
+      <button title="Διαγραφή">×</button>`;
+    const [renameBtn, manageBtn, delBtn] = pill.querySelectorAll("button");
+    renameBtn.addEventListener("click", async ()=>{
+      const nv = await promptText("Μετονομασία κατηγορίας", cat);
+      if(nv && nv!==cat) await renameCategory(cat, nv);
+    });
+    manageBtn.addEventListener("click", ()=>openSubcategoryMgr(cat));
+    delBtn.addEventListener("click", async ()=>{
+      const inUse = [...state.data.passwords, ...state.data.notes].some(x => x.category===cat);
+      if(inUse && !confirm(`Η κατηγορία "${cat}" χρησιμοποιείται. Θα διαγραφεί μόνο από τη λίστα (οι εγγραφές παραμένουν). Συνέχεια;`)) return;
+      delete state.data.categories[cat];
+      await saveData();
+      renderCategoriesMgr();
+      renderCategoryStrip();
+      renderSubcategoryStrip();
+      if(state.fCategories.has(cat)){
+        state.fCategories.delete(cat);
+        for(const k of [...state.fSubcategories]) if(k.startsWith(cat+"::")) state.fSubcategories.delete(k);
+        renderList();
+      }
+    });
+    c.appendChild(pill);
+  }
+}
+function openSubcategoryMgr(cat){
+  const subs = state.data.categories[cat] || [];
+  openPicker({
+    title: `Υποκατηγορίες (${cat})`,
+    allowNone: false,
+    options: subs.map(s=>({value:s, label:s+"   (πάτα για διαγραφή)"})),
+    allowAdd: true, addLabel:"+ Νέα υποκατηγορία...",
+    onAdd: async () => {
+      const v = await promptText(`Νέα υποκατηγορία στο "${cat}"`,"π.χ. gmail");
+      if(!v) return null;
+      if(!state.data.categories[cat].includes(v)){
+        state.data.categories[cat].push(v);
+        await saveData();
+        renderCategoriesMgr();
+      }
+      // Re-open to reflect
+      setTimeout(()=>openSubcategoryMgr(cat), 100);
+      return null; // stop the default onPick close
+    },
+    onPick: async (v) => {
+      if(!v) return;
+      if(!confirm(`Διαγραφή υποκατηγορίας "${v}" από "${cat}";`)){
+        setTimeout(()=>openSubcategoryMgr(cat), 100);
+        return;
+      }
+      state.data.categories[cat] = state.data.categories[cat].filter(x=>x!==v);
+      state.fSubcategories.delete(subKey(cat, v));
+      await saveData();
+      renderCategoriesMgr();
+      renderSubcategoryStrip();
+      renderList();
+      setTimeout(()=>openSubcategoryMgr(cat), 100);
+    }
+  });
+}
+
+/* ============ IMPORT / EXPORT ============ */
+function todayStr(){
+  const d = new Date();
+  const pad = n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function exportBackup(auto=false){
+  if(!state.vault) return;
+  const blob = new Blob([JSON.stringify(state.vault, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const d = new Date();
+  const pad = n=>String(n).padStart(2,"0");
+  const stamp = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+  a.href = url;
+  a.download = `vault-backup-${stamp}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  const s = store.settings; s.lastBackup = todayStr(); store.settings = s;
+  updateLastBackupDesc();
+  showToast(auto ? "Auto-backup κατέβηκε ✓" : "Backup κατέβηκε ✓");
+}
+
+/* ============ AUTO-BACKUP CHECK ============ */
+function isBackupDueToday(){
+  const mode = store.settings.autobackup || "wed-sat";
+  if(mode === "off") return false;
+  const last = store.settings.lastBackup;
+  const today = todayStr();
+  if(last === today) return false;
+  const dow = new Date().getDay(); // 0=Sun, 3=Wed, 6=Sat
+  if(mode === "daily") return true;
+  if(mode === "wed-sat") return dow === 3 || dow === 6;
+  if(mode === "weekly"){
+    if(!last) return true;
+    const diff = (Date.now() - new Date(last).getTime()) / 86400000;
+    return diff >= 7;
+  }
+  return false;
+}
+function daysAgoLabel(dateStr){
+  if(!dateStr) return "ποτέ";
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+  if(diff <= 0) return "σήμερα";
+  if(diff === 1) return "χθες";
+  return `πριν ${diff} μέρες`;
+}
+function updateLastBackupDesc(){
+  const last = store.settings.lastBackup;
+  $("#lastBackupDesc").textContent = last
+    ? `Τελευταίο backup: ${daysAgoLabel(last)}.`
+    : "Κρυπτογραφημένο αρχείο με όλα τα δεδομένα.";
+}
+function checkBackupBanner(){
+  const banner = $("#backupBanner");
+  if(isBackupDueToday()){
+    const last = store.settings.lastBackup;
+    const dayNames = ["Κυριακή","Δευτέρα","Τρίτη","Τετάρτη","Πέμπτη","Παρασκευή","Σάββατο"];
+    const today = dayNames[new Date().getDay()];
+    $("#backupBannerDesc").textContent = last
+      ? `${today} — τελευταίο backup ${daysAgoLabel(last)}.`
+      : `${today} — δεν έχεις κάνει backup ακόμα.`;
+    banner.classList.remove("hidden");
+  } else {
+    banner.classList.add("hidden");
+  }
+}
+
+/* Runs after unlock: if Dropbox connected AND backup due, upload silently. */
+async function runAutoBackupIfDue(){
+  if(!isBackupDueToday()) return;
+  if(state.data.dropbox && state.data.dropbox.refreshToken){
+    // Try silent upload — no user click needed
+    const ok = await dropboxUploadBackup(true);
+    if(ok){
+      showToast("Auto-backup στο Dropbox ✓");
+      checkBackupBanner();
+      return;
+    }
+    // If upload failed, banner stays and user can retry manually
+  }
+  checkBackupBanner();
+}
+
+function askPrompt(title, msg){
+  return new Promise(resolve=>{
+    $("#promptTitle").textContent = title;
+    $("#promptMsg").textContent = msg||"";
+    $("#promptInput").type = "password";
+    $("#promptInput").value = "";
+    $("#promptError").textContent = "";
+    openModal("#promptModal");
+    setTimeout(()=>$("#promptInput").focus(), 50);
+    const ok = ()=>{ const v = $("#promptInput").value; cleanup(); resolve(v); };
+    const cancel = ()=>{ cleanup(); resolve(null); };
+    const keyHandler = e=>{ if(e.key==="Enter"){ e.preventDefault(); ok(); } if(e.key==="Escape") cancel(); };
+    function cleanup(){
+      $("#promptOk").removeEventListener("click", ok);
+      $("#promptCancel").removeEventListener("click", cancel);
+      $("#promptInput").removeEventListener("keydown", keyHandler);
+      closeModal("#promptModal");
+    }
+    $("#promptOk").addEventListener("click", ok);
+    $("#promptCancel").addEventListener("click", cancel);
+    $("#promptInput").addEventListener("keydown", keyHandler);
+  });
+}
+
+async function importBackup(file, fromLogin=false){
+  try{
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    if(!parsed.salt || !parsed.check || !parsed.data){ throw new Error("Μη έγκυρο backup"); }
+    const pwd = await askPrompt("Master password του backup", "Δώσε τον κωδικό με τον οποίο έγινε το backup.");
+    if(pwd===null) return;
+    const key = await deriveKey(pwd, unb64(parsed.salt), parsed.iterations||250000);
+    try{ await decryptJSON(parsed.check, key); }
+    catch{ showToast("Λάθος password για backup"); return; }
+    const rawData = await decryptJSON(parsed.data, key);
+    const data = seedDataShape(rawData);
+
+    if(fromLogin){
+      store.vault = parsed;
+      state.vault = parsed;
+      state.key = key;
+      state.masterPwd = pwd;
+      state.data = data;
+      enterApp();
+      showToast("Επαναφορά ολοκληρώθηκε ✓");
+    } else {
+      const mergeArr = (a,b)=>{
+        const m = new Map();
+        for(const x of a) m.set(x.id, x);
+        for(const x of b){
+          const cur = m.get(x.id);
+          if(!cur || (x.updated||0) > (cur.updated||0)) m.set(x.id, x);
+        }
+        return [...m.values()];
+      };
+      state.data.passwords = mergeArr(state.data.passwords, data.passwords||[]);
+      state.data.notes = mergeArr(state.data.notes, data.notes||[]);
+      // Union people
+      for(const p of data.people||[]) if(!state.data.people.includes(p)) state.data.people.push(p);
+      // Merge categories: union of subcategories
+      for(const c of Object.keys(data.categories||{})){
+        if(!state.data.categories[c]) state.data.categories[c] = [];
+        for(const s of data.categories[c]) if(!state.data.categories[c].includes(s)) state.data.categories[c].push(s);
+      }
+      await saveData();
+      renderPeopleMgr();
+      renderCategoriesMgr();
+      renderPeopleStrip();
+      renderCategoryStrip();
+      renderSubcategoryStrip();
+      renderList();
+      showToast("Συγχώνευση OK ✓");
+    }
+  }catch(e){
+    console.error(e);
+    showToast("Σφάλμα κατά την επαναφορά");
+  }
+}
+
+/* ============ DROPBOX (PKCE OAuth + upload) ============ */
+const DBX_PENDING_KEY = "vault.dbx.pending";  // { verifier, appKey } while waiting for redirect
+const DBX_FOLDER = "";  // App-folder scoped app, writes to root of the app folder
+
+function dropboxRedirectUri(){
+  return window.location.origin + window.location.pathname;
+}
+
+async function sha256(input){
+  const buf = await crypto.subtle.digest("SHA-256", enc.encode(input));
+  return new Uint8Array(buf);
+}
+function base64url(bytes){
+  return b64(bytes).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function randVerifier(){
+  const raw = randBytes(48);
+  return base64url(raw);
+}
+
+async function dropboxStartConnect(){
+  const appKey = ($("#dropboxKeyInput").value || "").trim();
+  if(!appKey){ showToast("Δώσε πρώτα το App key"); return; }
+  const verifier = randVerifier();
+  const challenge = base64url(await sha256(verifier));
+  sessionStorage.setItem(DBX_PENDING_KEY, JSON.stringify({verifier, appKey}));
+  const url = new URL("https://www.dropbox.com/oauth2/authorize");
+  url.searchParams.set("response_type","code");
+  url.searchParams.set("client_id", appKey);
+  url.searchParams.set("redirect_uri", dropboxRedirectUri());
+  url.searchParams.set("code_challenge", challenge);
+  url.searchParams.set("code_challenge_method","S256");
+  url.searchParams.set("token_access_type","offline");   // ask for refresh token
+  window.location.href = url.toString();
+}
+
+async function dropboxFinishConnect(code){
+  const pending = JSON.parse(sessionStorage.getItem(DBX_PENDING_KEY)||"null");
+  if(!pending){ showToast("Λείπει το pending session — ξαναδοκίμασε σύνδεση"); return; }
+  sessionStorage.removeItem(DBX_PENDING_KEY);
+  const body = new URLSearchParams({
+    code, grant_type:"authorization_code",
+    client_id: pending.appKey,
+    code_verifier: pending.verifier,
+    redirect_uri: dropboxRedirectUri(),
+  });
+  const resp = await fetch("https://api.dropboxapi.com/oauth2/token", {
+    method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"}, body
+  });
+  if(!resp.ok){
+    const txt = await resp.text();
+    console.error("dropbox token exchange failed", resp.status, txt);
+    showToast("Απέτυχε η σύνδεση Dropbox");
+    return;
+  }
+  const j = await resp.json();
+  state.data.dropbox = {
+    appKey: pending.appKey,
+    refreshToken: j.refresh_token,
+    accessToken: j.access_token,
+    expiresAt: Date.now() + (j.expires_in||14400)*1000 - 60000,
+    lastUpload: null,
+  };
+  await saveData();
+  renderDropboxUI();
+  showToast("Dropbox συνδέθηκε ✓");
+}
+
+async function dropboxRefreshToken(){
+  const dbx = state.data.dropbox;
+  if(!dbx || !dbx.refreshToken) throw new Error("no-refresh-token");
+  const body = new URLSearchParams({
+    grant_type:"refresh_token",
+    refresh_token: dbx.refreshToken,
+    client_id: dbx.appKey,
+  });
+  const resp = await fetch("https://api.dropboxapi.com/oauth2/token", {
+    method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"}, body
+  });
+  if(!resp.ok){ throw new Error("refresh-failed: "+resp.status); }
+  const j = await resp.json();
+  dbx.accessToken = j.access_token;
+  dbx.expiresAt = Date.now() + (j.expires_in||14400)*1000 - 60000;
+  await saveData();
+}
+
+async function dropboxAccessToken(){
+  const dbx = state.data.dropbox;
+  if(!dbx) throw new Error("not-connected");
+  if(!dbx.accessToken || Date.now() >= (dbx.expiresAt||0)){
+    await dropboxRefreshToken();
+  }
+  return state.data.dropbox.accessToken;
+}
+
+async function dropboxUploadBackup(silent=false){
+  if(!state.data.dropbox){ if(!silent) showToast("Δεν είσαι συνδεδεμένος με Dropbox"); return false; }
+  try{
+    const token = await dropboxAccessToken();
+    const d = new Date();
+    const pad = n=>String(n).padStart(2,"0");
+    const stamp = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+    const path = `${DBX_FOLDER}/vault-backup-${stamp}.json`;
+    const bytes = enc.encode(JSON.stringify(state.vault));
+    const arg = {
+      path,
+      mode: "add",
+      autorename: true,
+      mute: true,
+      strict_conflict: false,
+    };
+    const resp = await fetch("https://content.dropboxapi.com/2/files/upload", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer "+token,
+        "Content-Type": "application/octet-stream",
+        "Dropbox-API-Arg": JSON.stringify(arg),
+      },
+      body: bytes,
+    });
+    if(!resp.ok){
+      const txt = await resp.text();
+      console.error("dropbox upload failed", resp.status, txt);
+      if(!silent) showToast("Απέτυχε το upload στο Dropbox");
+      return false;
+    }
+    const j = await resp.json();
+    state.data.dropbox.lastUpload = { at: Date.now(), path: j.path_display || path };
+    // Also mark today's local backup done so banner disappears
+    const s = store.settings; s.lastBackup = todayStr(); store.settings = s;
+    await saveData();
+    updateLastBackupDesc();
+    renderDropboxUI();
+    if(!silent) showToast("Ανέβηκε στο Dropbox ✓");
+    return true;
+  }catch(e){
+    console.error(e);
+    if(!silent) showToast("Σφάλμα Dropbox: "+e.message);
+    return false;
+  }
+}
+
+async function dropboxDisconnect(){
+  if(!confirm("Αποσύνδεση από Dropbox; Τα tokens θα διαγραφούν από αυτή τη συσκευή.")) return;
+  state.data.dropbox = null;
+  await saveData();
+  renderDropboxUI();
+  showToast("Αποσυνδέθηκε");
+}
+
+function renderDropboxUI(){
+  const dbx = state.data.dropbox;
+  const connected = !!(dbx && dbx.refreshToken);
+  $("#dropboxDisconnected").classList.toggle("hidden", connected);
+  $("#dropboxConnected").classList.toggle("hidden", !connected);
+  $("#dropboxRedirectHint").textContent = dropboxRedirectUri();
+  if(connected){
+    $("#dropboxStatus").innerHTML = `✓ Συνδεδεμένο <span style="color:var(--muted)">(app: ${escapeHtml(dbx.appKey.slice(0,6))}…)</span>`;
+    if(dbx.lastUpload){
+      const dt = new Date(dbx.lastUpload.at);
+      $("#dropboxLastUpload").textContent = `Τελευταίο upload: ${dt.toLocaleString("el-GR")}`;
+    } else {
+      $("#dropboxLastUpload").textContent = "Δεν έχει γίνει ακόμα upload.";
+    }
+  } else {
+    $("#dropboxStatus").textContent = "Δεν είναι συνδεδεμένο.";
+    $("#dropboxKeyInput").value = "";
+  }
+}
+
+/* ============ WEBAUTHN ============ */
+async function webauthnEnroll(){
+  if(!window.PublicKeyCredential){ showToast("WebAuthn δεν υποστηρίζεται"); return; }
+  if(!state.masterPwd){ showToast("Ξεκλείδωσε πρώτα"); return; }
+  try{
+    const challenge = randBytes(32);
+    const userId = randBytes(16);
+    const cred = await navigator.credentials.create({
+      publicKey:{
+        challenge,
+        rp:{name:"Vault"},
+        user:{id:userId, name:"vault-user", displayName:"Vault user"},
+        pubKeyCredParams:[{type:"public-key", alg:-7},{type:"public-key", alg:-257}],
+        authenticatorSelection:{userVerification:"required", residentKey:"preferred"},
+        timeout:60000,
+        attestation:"none",
+      }
+    });
+    if(!cred) throw new Error("no-cred");
+    const wrapKeyRaw = randBytes(32);
+    const wrapKey = await crypto.subtle.importKey("raw", wrapKeyRaw, {name:"AES-GCM"}, false, ["encrypt","decrypt"]);
+    const iv = randBytes(12);
+    const ct = await crypto.subtle.encrypt({name:"AES-GCM", iv}, wrapKey, enc.encode(state.masterPwd));
+    store.webauthn = {
+      credId: b64(cred.rawId),
+      wrap: b64(wrapKeyRaw),
+      iv: b64(iv),
+      ct: b64(ct),
+    };
+    showToast("Fingerprint ενεργοποιήθηκε ✓");
+    refreshSettingsUI();
+  }catch(e){
+    console.error(e);
+    showToast("Απέτυχε το enroll");
+  }
+}
+async function webauthnUnlock(){
+  const wa = store.webauthn; if(!wa) return null;
+  try{
+    const assertion = await navigator.credentials.get({
+      publicKey:{
+        challenge: randBytes(32),
+        allowCredentials: [{type:"public-key", id: unb64(wa.credId)}],
+        userVerification:"required",
+        timeout:60000,
+      }
+    });
+    if(!assertion) return null;
+    const wrapKey = await crypto.subtle.importKey("raw", unb64(wa.wrap), {name:"AES-GCM"}, false, ["decrypt"]);
+    const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv: unb64(wa.iv)}, wrapKey, unb64(wa.ct));
+    const pwd = dec.decode(pt);
+    await unlockVault(pwd);
+    return true;
+  }catch(e){
+    console.error(e);
+    return null;
+  }
+}
+
+/* ============ LOGIN ============ */
+function refreshLoginUI(){
+  const hasVault = !!store.vault;
+  $("#unlockBox").classList.toggle("hidden", !hasVault);
+  $("#setupBox").classList.toggle("hidden", hasVault);
+  $("#loginHint").textContent = hasVault
+    ? "Δώσε master password για να ξεκλειδώσεις."
+    : "Δημιούργησε master password για να ξεκινήσεις.";
+  $("#webauthnBtn").classList.toggle("hidden", !(hasVault && store.webauthn && window.PublicKeyCredential));
+  $("#loginError").textContent="";
+  $("#setupError").textContent="";
+}
+async function handleUnlock(){
+  const pw = $("#masterInput").value;
+  if(!pw){ $("#loginError").textContent="Δώσε password"; return; }
+  $("#unlockBtn").disabled=true;
+  try{ await unlockVault(pw); enterApp(); }
+  catch(e){ $("#loginError").textContent = e.message==="bad-password" ? "Λάθος password" : "Σφάλμα ξεκλειδώματος"; }
+  finally{ $("#unlockBtn").disabled=false; }
+}
+async function handleCreate(){
+  const a = $("#newMaster").value;
+  const b = $("#newMaster2").value;
+  if(!a || a.length<8){ $("#setupError").textContent = "Τουλάχιστον 8 χαρακτήρες"; return; }
+  if(a!==b){ $("#setupError").textContent = "Δεν ταιριάζουν"; return; }
+  $("#createBtn").disabled=true;
+  try{ await createVault(a); enterApp(); showToast("Vault δημιουργήθηκε ✓"); }
+  catch(e){ console.error(e); $("#setupError").textContent = "Σφάλμα δημιουργίας"; }
+  finally{ $("#createBtn").disabled=false; }
+}
+async function enterApp(){
+  $("#loginView").classList.add("hidden");
+  $("#appView").classList.remove("hidden");
+  $("#autolockSel").value = String(store.settings.autolock ?? 300000);
+  $("#autobackupSel").value = store.settings.autobackup || "wed-sat";
+  refreshSettingsUI();
+  renderPeopleMgr();
+  renderCategoriesMgr();
+  renderDropboxUI();
+  renderPeopleStrip();
+  renderCategoryStrip();
+  renderSubcategoryStrip();
+  renderList();
+  resetAutolock();
+  updateLastBackupDesc();
+
+  // Handle Dropbox OAuth redirect if present
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  if(code){
+    // Clean URL first
+    window.history.replaceState({}, "", window.location.pathname);
+    await dropboxFinishConnect(code);
+  }
+
+  // Try auto-backup silently
+  runAutoBackupIfDue();
+}
+function refreshSettingsUI(){
+  const has = !!store.webauthn;
+  $("#enrollWebauthnBtn").classList.toggle("hidden", has);
+  $("#disableWebauthnBtn").classList.toggle("hidden", !has);
+}
+
+/* ============ WIRE ============ */
+function wire(){
+  // Login
+  $("#unlockBtn").addEventListener("click", handleUnlock);
+  $("#masterInput").addEventListener("keydown", e=>{ if(e.key==="Enter") handleUnlock(); });
+  $("#toggleMaster").addEventListener("click", ()=>{ const el=$("#masterInput"); el.type=el.type==="password"?"text":"password"; });
+  $("#toggleNew").addEventListener("click", ()=>{ const el=$("#newMaster"); el.type=el.type==="password"?"text":"password"; });
+  $("#newMaster").addEventListener("input", ()=>updateStrengthBar($("#strengthBar"), $("#newMaster").value));
+  $("#createBtn").addEventListener("click", handleCreate);
+  $("#newMaster2").addEventListener("keydown", e=>{ if(e.key==="Enter") handleCreate(); });
+  $("#webauthnBtn").addEventListener("click", async ()=>{
+    $("#webauthnBtn").disabled=true;
+    const ok = await webauthnUnlock();
+    $("#webauthnBtn").disabled=false;
+    if(ok) enterApp(); else $("#loginError").textContent="Απέτυχε το ξεκλείδωμα";
+  });
+  $("#importFromFileBtn").addEventListener("click", ()=>$("#importFileInput").click());
+  $("#importFileInput").addEventListener("change", async e=>{
+    const f = e.target.files[0]; if(!f) return;
+    await importBackup(f, true);
+    e.target.value="";
+  });
+
+  // App
+  $("#lockBtn").addEventListener("click", lock);
+  $("#settingsBtn").addEventListener("click", ()=>$("#settingsPanel").classList.toggle("hidden"));
+  $$(".tabs button").forEach(b=>b.addEventListener("click", ()=>{
+    $$(".tabs button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    state.tab = b.dataset.tab;
+    renderPeopleStrip();
+    renderCategoryStrip();
+    renderSubcategoryStrip();
+    renderList();
+  }));
+  $("#searchInput").addEventListener("input", e=>{ state.filter = e.target.value; renderList(); });
+
+  // (filter chips removed — strips handle it now)
+
+  // FAB
+  const fab = document.createElement("button");
+  fab.className="fab"; fab.textContent="+"; fab.title="Προσθήκη"; fab.setAttribute("aria-label","add");
+  fab.addEventListener("click", ()=>openEdit(null));
+  document.body.appendChild(fab);
+  fab.style.display = "none";
+  const updateFab = ()=>{ fab.style.display = $("#appView").classList.contains("hidden") ? "none" : "grid"; };
+  new MutationObserver(updateFab).observe($("#appView"), {attributes:true, attributeFilter:["class"]});
+
+  // Edit modal
+  $("#cancelEditBtn").addEventListener("click", ()=>{ closeModal("#editModal"); state.editingId=null; });
+  $("#saveItemBtn").addEventListener("click", saveEdit);
+  $("#deleteItemBtn").addEventListener("click", deleteItem);
+  $("#pwPass").addEventListener("input", e=>updateStrengthBar($("#editStrength"), e.target.value));
+  $("#pwGen").addEventListener("click", ()=>{ const pw = generatePassword(20); $("#pwPass").value = pw; $("#pwPass").type="text"; updateStrengthBar($("#editStrength"), pw); });
+  $("#pwShow").addEventListener("click", ()=>{ const el=$("#pwPass"); el.type=el.type==="password"?"text":"password"; });
+
+  $("#editPersonBtn").addEventListener("click", openEditPersonPicker);
+  $("#editCategoryBtn").addEventListener("click", openEditCategoryPicker);
+  $("#editSubcategoryBtn").addEventListener("click", openEditSubcategoryPicker);
+
+  // Picker close
+  $("#pickerClose").addEventListener("click", ()=>closeModal("#pickerModal"));
+
+  // View
+  $("#closeViewBtn").addEventListener("click", ()=>closeModal("#viewModal"));
+  $("#editFromViewBtn").addEventListener("click", ()=>openEdit(state.editingId));
+
+  // Modal backdrop
+  $$(".modal").forEach(m=>m.addEventListener("click", e=>{ if(e.target===m) m.classList.remove("open"); }));
+
+  // Backup banner — if Dropbox connected, upload there; otherwise download file
+  $("#backupNowBtn").addEventListener("click", async ()=>{
+    if(state.data.dropbox && state.data.dropbox.refreshToken){
+      await dropboxUploadBackup(false);
+    } else {
+      exportBackup(true);
+    }
+    checkBackupBanner();
+  });
+  $("#backupSkipBtn").addEventListener("click", ()=>{
+    $("#backupBanner").classList.add("hidden");
+  });
+
+  // Dropbox
+  $("#dropboxConnectBtn").addEventListener("click", dropboxStartConnect);
+  $("#dropboxDisconnectBtn").addEventListener("click", dropboxDisconnect);
+  $("#dropboxTestBtn").addEventListener("click", ()=>dropboxUploadBackup(false));
+
+  // Settings items
+  $("#exportBtn").addEventListener("click", ()=>exportBackup(false));
+  $("#autobackupSel").addEventListener("change", e=>{
+    const s = store.settings; s.autobackup = e.target.value; store.settings = s;
+    checkBackupBanner();
+    showToast("Ρύθμιση αποθηκεύτηκε");
+  });
+  $("#importBtn").addEventListener("click", ()=>{
+    const inp = document.createElement("input");
+    inp.type="file"; inp.accept=".json,application/json";
+    inp.addEventListener("change", async e=>{
+      const f = e.target.files[0]; if(!f) return;
+      await importBackup(f, false);
+    });
+    inp.click();
+  });
+  $("#autolockSel").addEventListener("change", e=>{
+    const s = store.settings; s.autolock = Number(e.target.value); store.settings = s; resetAutolock();
+  });
+  $("#enrollWebauthnBtn").addEventListener("click", webauthnEnroll);
+  $("#disableWebauthnBtn").addEventListener("click", ()=>{
+    store.webauthn = null; refreshSettingsUI(); showToast("Fingerprint απενεργοποιήθηκε");
+  });
+  $("#changePwBtn").addEventListener("click", async ()=>{
+    const a = await askPrompt("Νέος master password", "Τουλάχιστον 8 χαρακτήρες.");
+    if(a===null) return;
+    if(a.length<8){ showToast("Πολύ μικρό"); return; }
+    const b = await askPrompt("Επιβεβαίωση", "Ξαναδώσε τον νέο master password.");
+    if(b===null) return;
+    if(a!==b){ showToast("Δεν ταιριάζουν"); return; }
+    await changeMasterPassword(a);
+    showToast("Άλλαξε ο master password ✓");
+  });
+  $("#wipeBtn").addEventListener("click", ()=>{
+    if(!confirm("Σίγουρα διαγραφή όλων των κρυπτογραφημένων δεδομένων από αυτή τη συσκευή; Δεν αναιρείται.")) return;
+    store.clearVault();
+    store.webauthn = null;
+    lock();
+    showToast("Διαγράφηκαν");
+  });
+
+  // People / categories add
+  $("#addPersonBtn").addEventListener("click", async ()=>{
+    const v = $("#newPersonInput").value.trim();
+    if(!v) return;
+    if(!state.data.people.includes(v)) state.data.people.push(v);
+    $("#newPersonInput").value = "";
+    await saveData();
+    renderPeopleMgr();
+    renderPeopleStrip();
+  });
+  $("#newPersonInput").addEventListener("keydown", e=>{ if(e.key==="Enter") $("#addPersonBtn").click(); });
+  $("#addCategoryBtn").addEventListener("click", async ()=>{
+    const v = $("#newCategoryInput").value.trim();
+    if(!v) return;
+    if(!state.data.categories[v]) state.data.categories[v] = [];
+    $("#newCategoryInput").value = "";
+    await saveData();
+    renderCategoriesMgr();
+    renderCategoryStrip();
+  });
+  $("#newCategoryInput").addEventListener("keydown", e=>{ if(e.key==="Enter") $("#addCategoryBtn").click(); });
+
+  document.addEventListener("visibilitychange", ()=>{ if(document.hidden) resetAutolock(); });
+}
+
+/* ============ BOOT ============ */
+wire();
+refreshLoginUI();
+// If we came back from Dropbox OAuth and there's a code param, note it in loginHint
+if(new URLSearchParams(window.location.search).get("code")){
+  $("#loginHint").innerHTML = "🔗 Επιστροφή από Dropbox. <b>Ξεκλείδωσε</b> για να ολοκληρωθεί η σύνδεση.";
+}
+setTimeout(()=>$("#masterInput").focus(), 100);
+</script>
+</body>
+</html>

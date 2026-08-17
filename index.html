@@ -201,8 +201,9 @@ pre.note{white-space:pre-wrap;word-wrap:break-word;background:var(--panel2);bord
       <div class="hint" style="margin-top:12px">⚠ Αν χάσεις τον master password τα δεδομένα δεν ανακτώνται. Κράτα και ένα backup export.</div>
     </div>
 
-    <div style="text-align:center;margin-top:14px">
-      <button id="importFromFileBtn" class="btn ghost" style="font-size:13px">Επαναφορά από backup...</button>
+    <div style="text-align:center;margin-top:14px;display:flex;gap:8px;flex-direction:column">
+      <button id="restoreFromDropboxBtn" class="btn ghost" style="font-size:13px">☁ Σύνδεση με Dropbox (live sync)</button>
+      <button id="importFromFileBtn" class="btn ghost" style="font-size:13px">📁 Επαναφορά από αρχείο...</button>
       <input id="importFileInput" type="file" accept=".json,application/json" class="hidden" />
     </div>
   </div>
@@ -215,6 +216,7 @@ pre.note{white-space:pre-wrap;word-wrap:break-word;background:var(--panel2);bord
       <div class="logo-svg">V</div>
       <h1 style="font-size:18px">Vault</h1>
     </div>
+    <button id="syncStatus" class="icon-btn" title="Sync" aria-label="sync" style="font-weight:700">⌀</button>
     <button id="settingsBtn" class="icon-btn" title="Ρυθμίσεις" aria-label="settings">⚙</button>
     <button id="lockBtn" class="icon-btn" title="Κλείδωμα" aria-label="lock">🔒</button>
   </div>
@@ -304,15 +306,15 @@ pre.note{white-space:pre-wrap;word-wrap:break-word;background:var(--panel2);bord
     <div id="dropboxConnected" class="hidden">
       <div class="item">
         <div class="grow">
-          <div>Test upload τώρα</div>
-          <div class="desc" id="dropboxLastUpload">Δεν έχει γίνει ακόμα upload.</div>
+          <div>Sync τώρα</div>
+          <div class="desc" id="dropboxLastUpload">Ακόμα κανένα sync.</div>
         </div>
-        <button id="dropboxTestBtn" class="btn ghost">Upload</button>
+        <button id="dropboxTestBtn" class="btn ghost">Sync</button>
       </div>
       <div class="item">
         <div class="grow">
           <div>Αποσύνδεση</div>
-          <div class="desc">Σβήνει τα Dropbox tokens από το vault.</div>
+          <div class="desc">Σβήνει τα Dropbox tokens από αυτή τη συσκευή. Τα cloud δεδομένα παραμένουν.</div>
         </div>
         <button id="dropboxDisconnectBtn" class="btn ghost">Αποσύνδεση</button>
       </div>
@@ -490,6 +492,7 @@ pre.note{white-space:pre-wrap;word-wrap:break-word;background:var(--panel2);bord
 const LS_KEY = "vault.v1";
 const WA_KEY = "vault.webauthn.v1";
 const SETTINGS_KEY = "vault.settings.v1";
+const DBX_KEY = "vault.dbx.v1"; // plain — needed to bootstrap sync before unlock
 
 const store = {
   get vault(){ try{return JSON.parse(localStorage.getItem(LS_KEY)||"null")}catch{return null} },
@@ -499,6 +502,8 @@ const store = {
   set webauthn(v){ if(v===null) localStorage.removeItem(WA_KEY); else localStorage.setItem(WA_KEY, JSON.stringify(v)) },
   get settings(){ try{return JSON.parse(localStorage.getItem(SETTINGS_KEY)||"{}")}catch{return {}} },
   set settings(v){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(v)) },
+  get dbx(){ try{return JSON.parse(localStorage.getItem(DBX_KEY)||"null")}catch{return null} },
+  set dbx(v){ if(v===null) localStorage.removeItem(DBX_KEY); else localStorage.setItem(DBX_KEY, JSON.stringify(v)) },
 };
 
 /* ============ CRYPTO ============ */
@@ -671,13 +676,26 @@ async function unlockVault(password){
   state.key = key;
   state.masterPwd = password;
   state.data = seedDataShape(rawData);
-  // If migration filled in defaults, persist so next load has them
-  if(!rawData.people || !rawData.categories){ await saveData(); }
+  // Migration: older vaults kept Dropbox creds inside encrypted data. Move to plain store.
+  if(rawData.dropbox && rawData.dropbox.refreshToken && !store.dbx){
+    store.dbx = {
+      appKey: rawData.dropbox.appKey,
+      refreshToken: rawData.dropbox.refreshToken,
+      accessToken: rawData.dropbox.accessToken,
+      expiresAt: rawData.dropbox.expiresAt,
+      lastPush: null, lastPull: null, lastSnapshotWeek: null,
+    };
+  }
+  // Strip legacy dropbox field from encrypted payload
+  if(rawData.dropbox){ delete state.data.dropbox; }
+  if(!rawData.people || !rawData.categories || rawData.dropbox){ await saveData(); }
 }
 async function saveData(){
   const encData = await encryptJSON(state.data, state.key);
   state.vault.data = encData;
+  state.vault._modified = Date.now();
   store.vault = state.vault;
+  schedulePush();
 }
 async function changeMasterPassword(newPw){
   const salt = randBytes(16);
@@ -1674,19 +1692,11 @@ function checkBackupBanner(){
   }
 }
 
-/* Runs after unlock: if Dropbox connected AND backup due, upload silently. */
+/* Runs after unlock: if Dropbox connected → snapshot auto-handled by cloudPush.
+   Otherwise show banner suggesting manual export. */
 async function runAutoBackupIfDue(){
+  if(store.dbx) return;   // live sync + weekly snapshot cover this
   if(!isBackupDueToday()) return;
-  if(state.data.dropbox && state.data.dropbox.refreshToken){
-    // Try silent upload — no user click needed
-    const ok = await dropboxUploadBackup(true);
-    if(ok){
-      showToast("Auto-backup στο Dropbox ✓");
-      checkBackupBanner();
-      return;
-    }
-    // If upload failed, banner stays and user can retry manually
-  }
   checkBackupBanner();
 }
 
@@ -1769,14 +1779,13 @@ async function importBackup(file, fromLogin=false){
   }
 }
 
-/* ============ DROPBOX (PKCE OAuth + upload) ============ */
-const DBX_PENDING_KEY = "vault.dbx.pending";  // { verifier, appKey } while waiting for redirect
-const DBX_FOLDER = "";  // App-folder scoped app, writes to root of the app folder
+/* ============ DROPBOX LIVE SYNC ============ */
+const DBX_PENDING_KEY = "vault.dbx.pending";
+const CLOUD_FILE = "/vault-current.json";     // live sync file in App folder
 
 function dropboxRedirectUri(){
   return window.location.origin + window.location.pathname;
 }
-
 async function sha256(input){
   const buf = await crypto.subtle.digest("SHA-256", enc.encode(input));
   return new Uint8Array(buf);
@@ -1784,14 +1793,30 @@ async function sha256(input){
 function base64url(bytes){
   return b64(bytes).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 }
-function randVerifier(){
-  const raw = randBytes(48);
-  return base64url(raw);
+function randVerifier(){ return base64url(randBytes(48)); }
+
+function isoWeekKey(d=new Date()){
+  // Returns "YYYY-Www" per ISO-8601 (Thursday-anchored week)
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y = t.getUTCFullYear();
+  const yStart = new Date(Date.UTC(y, 0, 1));
+  const week = Math.ceil((((t - yStart)/86400000) + 1) / 7);
+  return `${y}-W${String(week).padStart(2,"0")}`;
 }
 
 async function dropboxStartConnect(){
   const appKey = ($("#dropboxKeyInput").value || "").trim();
   if(!appKey){ showToast("Δώσε πρώτα το App key"); return; }
+  await dropboxBeginOAuth(appKey);
+}
+async function dropboxStartConnectFromLogin(){
+  const appKey = await promptText("Dropbox App key","Θα ενεργοποιήσει live sync + επαναφορά αν υπάρχει backup.");
+  if(!appKey) return;
+  await dropboxBeginOAuth(appKey.trim());
+}
+async function dropboxBeginOAuth(appKey){
   const verifier = randVerifier();
   const challenge = base64url(await sha256(verifier));
   sessionStorage.setItem(DBX_PENDING_KEY, JSON.stringify({verifier, appKey}));
@@ -1801,13 +1826,14 @@ async function dropboxStartConnect(){
   url.searchParams.set("redirect_uri", dropboxRedirectUri());
   url.searchParams.set("code_challenge", challenge);
   url.searchParams.set("code_challenge_method","S256");
-  url.searchParams.set("token_access_type","offline");   // ask for refresh token
+  url.searchParams.set("token_access_type","offline");
   window.location.href = url.toString();
 }
 
+/* Token exchange after OAuth. Stores creds in plain localStorage. */
 async function dropboxFinishConnect(code){
   const pending = JSON.parse(sessionStorage.getItem(DBX_PENDING_KEY)||"null");
-  if(!pending){ showToast("Λείπει το pending session — ξαναδοκίμασε σύνδεση"); return; }
+  if(!pending){ showToast("Λείπει το pending session — ξαναδοκίμασε σύνδεση"); return false; }
   sessionStorage.removeItem(DBX_PENDING_KEY);
   const body = new URLSearchParams({
     code, grant_type:"authorization_code",
@@ -1819,27 +1845,27 @@ async function dropboxFinishConnect(code){
     method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"}, body
   });
   if(!resp.ok){
-    const txt = await resp.text();
-    console.error("dropbox token exchange failed", resp.status, txt);
+    console.error("dropbox token exchange failed", resp.status, await resp.text());
     showToast("Απέτυχε η σύνδεση Dropbox");
-    return;
+    return false;
   }
   const j = await resp.json();
-  state.data.dropbox = {
+  store.dbx = {
     appKey: pending.appKey,
     refreshToken: j.refresh_token,
     accessToken: j.access_token,
     expiresAt: Date.now() + (j.expires_in||14400)*1000 - 60000,
-    lastUpload: null,
+    lastPush: null,
+    lastPull: null,
+    lastSnapshotWeek: null,
   };
-  await saveData();
-  renderDropboxUI();
-  showToast("Dropbox συνδέθηκε ✓");
+  return true;
 }
 
-async function dropboxRefreshToken(){
-  const dbx = state.data.dropbox;
-  if(!dbx || !dbx.refreshToken) throw new Error("no-refresh-token");
+async function dbxAccessToken(){
+  const dbx = store.dbx;
+  if(!dbx) throw new Error("not-connected");
+  if(dbx.accessToken && Date.now() < (dbx.expiresAt||0)) return dbx.accessToken;
   const body = new URLSearchParams({
     grant_type:"refresh_token",
     refresh_token: dbx.refreshToken,
@@ -1848,91 +1874,182 @@ async function dropboxRefreshToken(){
   const resp = await fetch("https://api.dropboxapi.com/oauth2/token", {
     method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"}, body
   });
-  if(!resp.ok){ throw new Error("refresh-failed: "+resp.status); }
+  if(!resp.ok) throw new Error("refresh-failed: "+resp.status);
   const j = await resp.json();
   dbx.accessToken = j.access_token;
   dbx.expiresAt = Date.now() + (j.expires_in||14400)*1000 - 60000;
-  await saveData();
+  store.dbx = dbx;
+  return dbx.accessToken;
 }
 
-async function dropboxAccessToken(){
-  const dbx = state.data.dropbox;
-  if(!dbx) throw new Error("not-connected");
-  if(!dbx.accessToken || Date.now() >= (dbx.expiresAt||0)){
-    await dropboxRefreshToken();
+/* Download the live sync file. Returns parsed vault JSON, or null if not found. */
+async function cloudPull(){
+  if(!store.dbx) return null;
+  const token = await dbxAccessToken();
+  const resp = await fetch("https://content.dropboxapi.com/2/files/download", {
+    method:"POST",
+    headers:{
+      "Authorization":"Bearer "+token,
+      "Dropbox-API-Arg": JSON.stringify({path: CLOUD_FILE}),
+    },
+  });
+  if(resp.status === 409){ return null; }  // path/not_found
+  if(!resp.ok){
+    console.error("pull failed", resp.status, await resp.text());
+    throw new Error("pull failed: "+resp.status);
   }
-  return state.data.dropbox.accessToken;
+  const text = await resp.text();
+  const j = JSON.parse(text);
+  const dbx = store.dbx; dbx.lastPull = Date.now(); store.dbx = dbx;
+  return j;
 }
 
-async function dropboxUploadBackup(silent=false){
-  if(!state.data.dropbox){ if(!silent) showToast("Δεν είσαι συνδεδεμένος με Dropbox"); return false; }
+/* Upload current vault as the live sync file (overwrite). */
+async function cloudPush(){
+  if(!store.dbx || !state.vault) return;
+  state.vault._modified = Date.now();
+  store.vault = state.vault;
+  const token = await dbxAccessToken();
+  const bytes = enc.encode(JSON.stringify(state.vault));
+  const arg = {path: CLOUD_FILE, mode:"overwrite", mute: true};
+  const resp = await fetch("https://content.dropboxapi.com/2/files/upload", {
+    method:"POST",
+    headers:{
+      "Authorization":"Bearer "+token,
+      "Content-Type":"application/octet-stream",
+      "Dropbox-API-Arg": JSON.stringify(arg),
+    },
+    body: bytes,
+  });
+  if(!resp.ok){
+    console.error("push failed", resp.status, await resp.text());
+    throw new Error("push failed: "+resp.status);
+  }
+  const dbx = store.dbx; dbx.lastPush = Date.now(); store.dbx = dbx;
+  await maybeWeeklySnapshot();
+}
+
+/* Once per ISO week, keep a versioned snapshot for point-in-time recovery. */
+async function maybeWeeklySnapshot(){
+  const dbx = store.dbx; if(!dbx) return;
+  const week = isoWeekKey();
+  if(dbx.lastSnapshotWeek === week) return;
   try{
-    const token = await dropboxAccessToken();
-    const d = new Date();
-    const pad = n=>String(n).padStart(2,"0");
-    const stamp = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
-    const path = `${DBX_FOLDER}/vault-backup-${stamp}.json`;
+    const token = await dbxAccessToken();
+    const path = `/vault-snapshot-${week}.json`;
     const bytes = enc.encode(JSON.stringify(state.vault));
-    const arg = {
-      path,
-      mode: "add",
-      autorename: true,
-      mute: true,
-      strict_conflict: false,
-    };
+    const arg = {path, mode:"overwrite", mute: true};
     const resp = await fetch("https://content.dropboxapi.com/2/files/upload", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer "+token,
-        "Content-Type": "application/octet-stream",
+      method:"POST",
+      headers:{
+        "Authorization":"Bearer "+token,
+        "Content-Type":"application/octet-stream",
         "Dropbox-API-Arg": JSON.stringify(arg),
       },
       body: bytes,
     });
-    if(!resp.ok){
-      const txt = await resp.text();
-      console.error("dropbox upload failed", resp.status, txt);
-      if(!silent) showToast("Απέτυχε το upload στο Dropbox");
-      return false;
+    if(resp.ok){
+      dbx.lastSnapshotWeek = week;
+      store.dbx = dbx;
     }
-    const j = await resp.json();
-    state.data.dropbox.lastUpload = { at: Date.now(), path: j.path_display || path };
-    // Also mark today's local backup done so banner disappears
-    const s = store.settings; s.lastBackup = todayStr(); store.settings = s;
-    await saveData();
-    updateLastBackupDesc();
-    renderDropboxUI();
-    if(!silent) showToast("Ανέβηκε στο Dropbox ✓");
-    return true;
+  }catch(e){ console.error("snapshot failed", e); }
+}
+
+/* Debounced push scheduler + status indicator. */
+let _pushTimer = null;
+let _pushInFlight = false;
+let _pushQueued = false;
+function setSyncStatus(kind){
+  const el = $("#syncStatus"); if(!el) return;
+  const map = {
+    "synced":   {icon:"✓",  color:"var(--ok)",   title:"Synced"},
+    "pending":  {icon:"⟳",  color:"var(--warn)", title:"Sync σε εξέλιξη"},
+    "error":    {icon:"!",  color:"var(--err)",  title:"Sync error — tap για retry"},
+    "offline":  {icon:"⌀",  color:"var(--muted)",title:"Χωρίς Dropbox"},
+  };
+  const s = map[kind] || map.offline;
+  el.textContent = s.icon;
+  el.style.color = s.color;
+  el.title = s.title;
+  el.dataset.kind = kind;
+}
+function schedulePush(){
+  if(!store.dbx) return;
+  setSyncStatus("pending");
+  clearTimeout(_pushTimer);
+  _pushTimer = setTimeout(runPush, 1200);
+}
+async function runPush(){
+  if(_pushInFlight){ _pushQueued = true; return; }
+  _pushInFlight = true;
+  try{
+    await cloudPush();
+    setSyncStatus("synced");
   }catch(e){
     console.error(e);
-    if(!silent) showToast("Σφάλμα Dropbox: "+e.message);
-    return false;
+    setSyncStatus("error");
+  }finally{
+    _pushInFlight = false;
+    if(_pushQueued){ _pushQueued = false; schedulePush(); }
+  }
+}
+async function manualSyncNow(){
+  if(!store.dbx){ showToast("Χωρίς Dropbox"); return; }
+  setSyncStatus("pending");
+  try{
+    // Try pull first — if cloud is newer, we need it before we push over it.
+    const cloud = await cloudPull();
+    if(cloud && (cloud._modified||0) > (state.vault?._modified||0)){
+      // Re-install cloud version. If it's decryptable with the same master key, ok.
+      // Otherwise the user needs to re-unlock. We'll ask.
+      try{
+        const data = await decryptJSON(cloud.data, state.key);
+        state.vault = cloud;
+        state.data = seedDataShape(data);
+        store.vault = cloud;
+        renderPeopleStrip(); renderCategoryStrip(); renderSubcategoryStrip(); renderList();
+        renderPeopleMgr(); renderCategoriesMgr();
+        showToast("Ενημερώθηκε από cloud ✓");
+        setSyncStatus("synced");
+        return;
+      }catch{
+        showToast("Cloud vault έχει διαφορετικό password — ξεκλείδωσε ξανά");
+        lock();
+        return;
+      }
+    }
+    // Otherwise push our (newer or equal) version.
+    await cloudPush();
+    setSyncStatus("synced");
+    showToast("Sync ✓");
+  }catch(e){
+    console.error(e);
+    setSyncStatus("error");
+    showToast("Sync error");
   }
 }
 
 async function dropboxDisconnect(){
-  if(!confirm("Αποσύνδεση από Dropbox; Τα tokens θα διαγραφούν από αυτή τη συσκευή.")) return;
-  state.data.dropbox = null;
-  await saveData();
+  if(!confirm("Αποσύνδεση από Dropbox; Τα tokens θα διαγραφούν από αυτή τη συσκευή. Τα δεδομένα του Dropbox παραμένουν εκεί.")) return;
+  store.dbx = null;
   renderDropboxUI();
+  setSyncStatus("offline");
   showToast("Αποσυνδέθηκε");
 }
 
 function renderDropboxUI(){
-  const dbx = state.data.dropbox;
+  const dbx = store.dbx;
   const connected = !!(dbx && dbx.refreshToken);
   $("#dropboxDisconnected").classList.toggle("hidden", connected);
   $("#dropboxConnected").classList.toggle("hidden", !connected);
   $("#dropboxRedirectHint").textContent = dropboxRedirectUri();
   if(connected){
-    $("#dropboxStatus").innerHTML = `✓ Συνδεδεμένο <span style="color:var(--muted)">(app: ${escapeHtml(dbx.appKey.slice(0,6))}…)</span>`;
-    if(dbx.lastUpload){
-      const dt = new Date(dbx.lastUpload.at);
-      $("#dropboxLastUpload").textContent = `Τελευταίο upload: ${dt.toLocaleString("el-GR")}`;
-    } else {
-      $("#dropboxLastUpload").textContent = "Δεν έχει γίνει ακόμα upload.";
-    }
+    $("#dropboxStatus").innerHTML = `✓ Live sync ενεργό <span style="color:var(--muted)">(app: ${escapeHtml(dbx.appKey.slice(0,6))}…)</span>`;
+    const bits = [];
+    if(dbx.lastPush) bits.push(`push: ${new Date(dbx.lastPush).toLocaleString("el-GR")}`);
+    if(dbx.lastPull) bits.push(`pull: ${new Date(dbx.lastPull).toLocaleString("el-GR")}`);
+    if(dbx.lastSnapshotWeek) bits.push(`snapshot: ${dbx.lastSnapshotWeek}`);
+    $("#dropboxLastUpload").textContent = bits.length ? bits.join(" · ") : "Ακόμα κανένα sync — γίνεται στο επόμενο save.";
   } else {
     $("#dropboxStatus").textContent = "Δεν είναι συνδεδεμένο.";
     $("#dropboxKeyInput").value = "";
@@ -2033,6 +2150,7 @@ async function enterApp(){
   $("#appView").classList.remove("hidden");
   $("#autolockSel").value = String(store.settings.autolock ?? 300000);
   $("#autobackupSel").value = store.settings.autobackup || "wed-sat";
+
   refreshSettingsUI();
   renderPeopleMgr();
   renderCategoriesMgr();
@@ -2044,16 +2162,39 @@ async function enterApp(){
   resetAutolock();
   updateLastBackupDesc();
 
-  // Handle Dropbox OAuth redirect if present
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get("code");
-  if(code){
-    // Clean URL first
-    window.history.replaceState({}, "", window.location.pathname);
-    await dropboxFinishConnect(code);
+  // Sync status
+  setSyncStatus(store.dbx ? "synced" : "offline");
+
+  // If Dropbox is connected, do an opportunistic pull to catch changes from another device
+  if(store.dbx){
+    try{
+      const cloud = await cloudPull();
+      if(cloud && (cloud._modified||0) > (state.vault._modified||0)){
+        // Try to decrypt with the master password we already have
+        try{
+          const data = await decryptJSON(cloud.data, state.key);
+          state.vault = cloud;
+          state.data = seedDataShape(data);
+          store.vault = cloud;
+          renderPeopleStrip(); renderCategoryStrip(); renderSubcategoryStrip(); renderList();
+          renderPeopleMgr(); renderCategoriesMgr();
+          setSyncStatus("synced");
+          showToast("Ενημερώθηκε από cloud ✓");
+        }catch{
+          // Cloud vault was created with a different password (or corrupted).
+          // Keep local for now; user can manually sync from settings if needed.
+          console.warn("cloud vault could not be decrypted with current key");
+          setSyncStatus("error");
+        }
+      } else {
+        setSyncStatus("synced");
+      }
+    }catch(e){
+      console.error("pull on open failed", e);
+      setSyncStatus("error");
+    }
   }
 
-  // Try auto-backup silently
   runAutoBackupIfDue();
 }
 function refreshSettingsUI(){
@@ -2078,6 +2219,8 @@ function wire(){
     $("#webauthnBtn").disabled=false;
     if(ok) enterApp(); else $("#loginError").textContent="Απέτυχε το ξεκλείδωμα";
   });
+  $("#restoreFromDropboxBtn").addEventListener("click", dropboxStartConnectFromLogin);
+  $("#syncStatus").addEventListener("click", manualSyncNow);
   $("#importFromFileBtn").addEventListener("click", ()=>$("#importFileInput").click());
   $("#importFileInput").addEventListener("change", async e=>{
     const f = e.target.files[0]; if(!f) return;
@@ -2132,10 +2275,10 @@ function wire(){
   // Modal backdrop
   $$(".modal").forEach(m=>m.addEventListener("click", e=>{ if(e.target===m) m.classList.remove("open"); }));
 
-  // Backup banner — if Dropbox connected, upload there; otherwise download file
+  // Backup banner — with Dropbox connected, live sync handles this; otherwise download file
   $("#backupNowBtn").addEventListener("click", async ()=>{
-    if(state.data.dropbox && state.data.dropbox.refreshToken){
-      await dropboxUploadBackup(false);
+    if(store.dbx){
+      await manualSyncNow();
     } else {
       exportBackup(true);
     }
@@ -2148,7 +2291,7 @@ function wire(){
   // Dropbox
   $("#dropboxConnectBtn").addEventListener("click", dropboxStartConnect);
   $("#dropboxDisconnectBtn").addEventListener("click", dropboxDisconnect);
-  $("#dropboxTestBtn").addEventListener("click", ()=>dropboxUploadBackup(false));
+  $("#dropboxTestBtn").addEventListener("click", manualSyncNow);
 
   // Settings items
   $("#exportBtn").addEventListener("click", ()=>exportBackup(false));
@@ -2218,12 +2361,44 @@ function wire(){
 
 /* ============ BOOT ============ */
 wire();
-refreshLoginUI();
-// If we came back from Dropbox OAuth and there's a code param, note it in loginHint
-if(new URLSearchParams(window.location.search).get("code")){
-  $("#loginHint").innerHTML = "🔗 Επιστροφή από Dropbox. <b>Ξεκλείδωσε</b> για να ολοκληρωθεί η σύνδεση.";
-}
-setTimeout(()=>$("#masterInput").focus(), 100);
+
+(async ()=>{
+  // 1. If we came back from Dropbox OAuth, finish the exchange first
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  if(code){
+    window.history.replaceState({}, "", window.location.pathname);
+    $("#loginHint").innerHTML = "⏳ Συνδέω με Dropbox...";
+    await dropboxFinishConnect(code);
+  }
+
+  // 2. If Dropbox is now connected, try to pull the vault (may be first time on this device)
+  if(store.dbx){
+    try{
+      $("#loginHint").innerHTML = "⏳ Ενημερώνω από Dropbox...";
+      const cloud = await cloudPull();
+      if(cloud){
+        // If we have no local vault, or cloud is newer, install cloud version
+        const localMod = store.vault?._modified || 0;
+        const cloudMod = cloud._modified || 0;
+        if(!store.vault || cloudMod > localMod){
+          store.vault = cloud;
+        }
+      }
+    }catch(e){
+      console.error("bootstrap pull failed", e);
+      // Non-fatal — continue with whatever local vault we have
+    }
+  }
+
+  refreshLoginUI();
+  if(store.dbx && !store.vault){
+    $("#loginHint").innerHTML = "Δεν βρέθηκε vault στο Dropbox. <b>Δημιούργησε master password</b> — θα ανέβει αυτόματα.";
+  } else if(store.dbx){
+    $("#loginHint").innerHTML = "☁ Sync ενεργό. <b>Δώσε master password</b> για ξεκλείδωμα.";
+  }
+  setTimeout(()=>$("#masterInput").focus(), 100);
+})();
 </script>
 </body>
 </html>
